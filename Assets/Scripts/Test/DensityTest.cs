@@ -134,7 +134,7 @@ public class DensityTest : MonoBehaviour {
       }
       //Debug.Log(x + " " + z + " : " + neighborPower * avg + " + " + (1f - neighborPower) * landValueMap[x, z]);
 
-      float density = (1.2f*avg + avg*(2f*landValueMap[x, z] - 1f));
+      float density = (0.4f*avg + (0.8f*landValueMap[x, z]));
 
       if (density > max) {
          max = density;

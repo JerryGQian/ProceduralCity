@@ -72,9 +72,6 @@ public class MeshGenerator : MonoBehaviour {
          }
       }
       mesh.colors = colors;
-      for (int i = 0; i < 1000; i+=50) {
-         Debug.Log(WorldManager.waterDistanceArr[i] + " " + WorldManager.waterDistanceLimit);
-      }
 
       mesh.RecalculateNormals();
    }
