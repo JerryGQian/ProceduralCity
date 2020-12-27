@@ -9,12 +9,25 @@ public enum ChunkState {
 }
 
 public class Chunk {
+   public static ArrayList dirs = new ArrayList() {
+      Vector2Int.up,
+      Vector2Int.down,
+      Vector2Int.left,
+      Vector2Int.right,
+      new Vector2Int(-1,-1),
+      new Vector2Int(1,-1),
+      new Vector2Int(1,1),
+      new Vector2Int(-1,1),
+   };
+
    public Bounds bounds;
    public ChunkState state;
 
    public float[,] terrainHeightMap;
    public ArrayList waterList;
-   public float[,] waterDistanceMap;
+   public float[,] waterDistanceMap; // actual map for this chunk
+   public float[,] patchWaterDistanceMap; // for water distance gen only
+   public Bounds patchBounds; // for patchWaterDistanceMap
 
    public Chunk(Bounds bounds) {
       this.bounds = bounds;
@@ -22,6 +35,9 @@ public class Chunk {
       terrainHeightMap = new float[(int)bounds.dim, (int)bounds.dim];
       waterList = new ArrayList();
       waterDistanceMap = new float[(int)bounds.dim, (int)bounds.dim];
+
+      patchWaterDistanceMap = new float[(int)bounds.dim*3, (int)bounds.dim*3];
+      patchBounds = new Bounds(bounds.dim * 3, bounds.xMin - bounds.dim, bounds.zMin - bounds.dim);
    }
 
    public void Preload(MonoBehaviour mono) {
@@ -30,7 +46,69 @@ public class Chunk {
    }
 
    public void Load(ArrayList patchChunks) {
+      //mono.StartCoroutine(LoadCoroutine(patchChunks));
+      int count = 0;
+
+      for (int x = 0; x < (int)patchBounds.dim; x++) {
+         for (int z = 0; z < (int)patchBounds.dim; z++) {
+            patchWaterDistanceMap[x, z] = WorldManager.waterDistanceLimit;
+         }
+      }
+
+      Queue<Vector2Int> queue = new Queue<Vector2Int>();
+      HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
+      // Enqueue initial shore points
+      foreach (Chunk c in patchChunks) {
+         foreach (Vector2Int waterPoint in c.waterList) {
+            Vector2Int patchLocalPoint = GetLocalPatchCoord(waterPoint);
+            queue.Enqueue(waterPoint);
+            visited.Add(waterPoint);
+            patchWaterDistanceMap[patchLocalPoint.x, patchLocalPoint.y] = 0;
+         }
+      }
       
+      // Process queued point
+      while (queue.Count > 0) {
+         Vector2Int currPoint = queue.Dequeue();
+         if (!InPatch(currPoint)) {
+            continue;
+         }
+         foreach (Vector2Int dir in dirs) { // in all 8 directions, finds min water distance + diff
+            if (!InPatch(currPoint + dir)) {
+               continue;
+            }
+            count++;
+            Vector2Int localCurrPoint = GetLocalPatchCoord(currPoint);
+            Vector2Int altPoint = currPoint + dir;
+            Vector2Int localAltPoint = localCurrPoint + dir;
+
+            float dist = patchWaterDistanceMap[localAltPoint.x, localAltPoint.y] + dir.magnitude;
+
+            if (!visited.Contains(altPoint) && InPatch(altPoint)) { //does calc for water because no access to patch terrainHeightMaps, but water doesnt really matter
+               //Debug.Log("adding!" + localAltPoint);
+               queue.Enqueue(altPoint);
+               visited.Add(altPoint);
+            }
+
+            if (dist < patchWaterDistanceMap[localCurrPoint.x, localCurrPoint.y]) {
+               patchWaterDistanceMap[localCurrPoint.x, localCurrPoint.y] = dist;
+            }
+
+
+         }
+      }
+      // Copy over center of patch calcs as waterDistanceMap for this chunk
+      for (int x = 0; x < (int)bounds.dim; x++) {
+         for (int z = 0; z < (int)bounds.dim; z++) {
+            count++;
+            //Debug.Log("END: " + x + " " + z + " : " + (x + (int)bounds.dim) + " " + (z + (int)bounds.dim));
+            waterDistanceMap[x, z] = patchWaterDistanceMap[x + (int)bounds.dim, z + (int)bounds.dim];
+         }
+      }
+
+
+      //
+      /*
       // Water distance
       for (int x = 0; x < (int)bounds.dim; x++) {
          for (int z = 0; z < (int)bounds.dim; z++) {
@@ -48,11 +126,77 @@ public class Chunk {
                   if (thisDist < curDist) {
                      waterDistanceMap[curPointLocal.x, curPointLocal.y] = thisDist;
                   }
+                  count++;
                }
             }
          }
-      }
+      }*/
       state = ChunkState.LOADED;
+      Debug.Log(count);
+   }
+
+   IEnumerator LoadCoroutine(ArrayList patchChunks) {
+      int count = 0;
+
+      for (int x = 0; x < (int)patchBounds.dim; x++) {
+         for (int z = 0; z < (int)patchBounds.dim; z++) {
+            patchWaterDistanceMap[x, z] = WorldManager.waterDistanceLimit;
+         }
+      }
+
+      Queue<Vector2Int> queue = new Queue<Vector2Int>();
+      HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
+      // Enqueue initial shore points
+      foreach (Chunk c in patchChunks) {
+         foreach (Vector2Int waterPoint in c.waterList) {
+            //Vector2Int globalPoint = GetGlobalCoord(c, waterPoint);
+            //Debug.Log("globalPoint: " + waterPoint + " " + c.bounds.GetCornerVecInt());
+            Vector2Int patchLocalPoint = GetLocalPatchCoord(waterPoint);
+            queue.Enqueue(waterPoint);
+            visited.Add(waterPoint);
+            patchWaterDistanceMap[patchLocalPoint.x, patchLocalPoint.y] = 0;
+         }
+      }
+
+      // Process queued point
+      while (queue.Count > 0) {
+         Vector2Int currPoint = queue.Dequeue();
+         if (!InPatch(currPoint)) {
+            continue;
+         }
+         foreach (Vector2Int dir in dirs) { // in all 8 directions, finds min water distance + diff
+            if (!InPatch(currPoint + dir)) {
+               continue;
+            }
+            count++;
+            Vector2Int localCurrPoint = GetLocalPatchCoord(currPoint);
+            Vector2Int altPoint = currPoint + dir;
+            Vector2Int localAltPoint = localCurrPoint + dir;
+
+            float dist = patchWaterDistanceMap[localAltPoint.x, localAltPoint.y] + dir.magnitude;
+
+            if (!visited.Contains(altPoint) && InPatch(altPoint)) { //does calc for water because no access to patch terrainHeightMaps, but water doesnt really matter
+               //Debug.Log("adding!" + localAltPoint);
+               queue.Enqueue(altPoint);
+               visited.Add(altPoint);
+            }
+
+            if (dist < patchWaterDistanceMap[localCurrPoint.x, localCurrPoint.y]) {
+               patchWaterDistanceMap[localCurrPoint.x, localCurrPoint.y] = dist;
+            }
+
+
+         }
+      }
+      yield return null;
+      // Copy over center of patch calcs as waterDistanceMap for this chunk
+      for (int x = 0; x < (int)bounds.dim; x++) {
+         for (int z = 0; z < (int)bounds.dim; z++) {
+            count++;
+            //Debug.Log("END: " + x + " " + z + " : " + (x + (int)bounds.dim) + " " + (z + (int)bounds.dim));
+            waterDistanceMap[x, z] = patchWaterDistanceMap[x + (int)bounds.dim, z + (int)bounds.dim];
+         }
+      }
    }
 
    void GenerateTerrain() {
@@ -122,6 +266,11 @@ public class Chunk {
       return terrainHeightMap[point.x, point.y] <= 0;
    }
 
+   public bool InPatch(Vector2Int point) {
+      Vector2Int local = GetLocalPatchCoord(point);
+      return local.x >= 0 && local.y >= 0 && local.x < patchBounds.dim && local.y < patchBounds.dim;
+   }
+
    public Vector2Int GetLocalCoord(Vector2Int global) {
       //Debug.Log(global + " " + bounds.GetCornerVecInt());
       /*if (bounds.GetCornerVecInt().x < 0) {
@@ -134,13 +283,17 @@ public class Chunk {
    }
 
    public Vector2Int GetGlobalCoord(Vector2Int local) {
-      /*if (bounds.GetCornerVecInt().x < 0) {
-         return local - bounds.GetCornerVecInt();
-      }
-      else {
-         return local + bounds.GetCornerVecInt();
-      }*/
       return local + bounds.GetCornerVecInt();
+   }
+   public Vector2Int GetGlobalCoord(Chunk chunk, Vector2Int local) {
+      return local + chunk.bounds.GetCornerVecInt();
+   }
+
+   public Vector2Int GetLocalPatchCoord(Vector2Int global) {
+      return global - patchBounds.GetCornerVecInt();
+   }
+   public Vector2Int GetGlobalPatchCoord(Vector2Int local) {
+      return local + patchBounds.GetCornerVecInt();
    }
 }
 

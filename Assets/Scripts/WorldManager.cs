@@ -11,7 +11,7 @@ public class WorldManager : MonoBehaviour {
    public static float[,] waterDistanceMap = new float[dim, dim];
    public static float[] waterDistanceArr = new float[dimArea];
 
-   public static float waterDistanceLimit = 60.5f;
+   public static float waterDistanceLimit = 99;
 
    public static int chunkSize = 100;
    private Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
@@ -108,14 +108,14 @@ public class WorldManager : MonoBehaviour {
    }
 
    IEnumerator PrepareWaterList(Chunk chunk) {
-      for (int i = 0, x = (int)chunk.bounds.xMin; x < chunk.bounds.xMax; x += 2) {
-         for (int z = (int)chunk.bounds.zMin; z < chunk.bounds.zMax; z += 2) {
+      for (int i = 0, x = (int)chunk.bounds.xMin; x < chunk.bounds.xMax; x += 1) {
+         for (int z = (int)chunk.bounds.zMin; z < chunk.bounds.zMax; z += 1) {
             Vector2Int localPoint = chunk.GetLocalCoord(new Vector2Int(x, z));
             if (chunk.IsShore(localPoint)) {
                chunk.waterList.Add(new Vector2Int(x, z));
             }
             i++;
-            if (i > 30) {
+            if (i > 100) {
                i = 0;
                yield return null;
             }
@@ -123,6 +123,73 @@ public class WorldManager : MonoBehaviour {
       }
       //Debug.Log("water:" + chunk.waterList.Count);
       chunk.state = ChunkState.PRELOADED;
+   }
+
+   IEnumerator LoadCoroutine(ArrayList patchChunks, Chunk chunk) {
+      int count = 0;
+
+      for (int x = 0; x < (int)chunk.patchBounds.dim; x++) {
+         for (int z = 0; z < (int)chunk.patchBounds.dim; z++) {
+            chunk.patchWaterDistanceMap[x, z] = WorldManager.waterDistanceLimit;
+         }
+      }
+
+      Queue<Vector2Int> queue = new Queue<Vector2Int>();
+      HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
+      // Enqueue initial shore points
+      foreach (Chunk c in patchChunks) {
+         foreach (Vector2Int waterPoint in c.waterList) {
+            //Vector2Int globalPoint = GetGlobalCoord(c, waterPoint);
+            //Debug.Log("globalPoint: " + waterPoint + " " + c.bounds.GetCornerVecInt());
+            Vector2Int patchLocalPoint = chunk.GetLocalPatchCoord(waterPoint);
+            queue.Enqueue(waterPoint);
+            visited.Add(waterPoint);
+            chunk.patchWaterDistanceMap[patchLocalPoint.x, patchLocalPoint.y] = 0;
+         }
+      }
+
+      // Process queued point
+      while (queue.Count > 0) {
+         Vector2Int currPoint = queue.Dequeue();
+         if (!chunk.InPatch(currPoint)) {
+            continue;
+         }
+         foreach (Vector2Int dir in Chunk.dirs) { // in all 8 directions, finds min water distance + diff
+            if (!chunk.InPatch(currPoint + dir)) {
+               continue;
+            }
+            count++;
+            Vector2Int localCurrPoint = chunk.GetLocalPatchCoord(currPoint);
+            Vector2Int altPoint = currPoint + dir;
+            Vector2Int localAltPoint = localCurrPoint + dir;
+
+            float dist = chunk.patchWaterDistanceMap[localAltPoint.x, localAltPoint.y] + dir.magnitude;
+
+            if (!visited.Contains(altPoint) && chunk.InPatch(altPoint)) { //does calc for water because no access to patch terrainHeightMaps, but water doesnt really matter
+               //Debug.Log("adding!" + localAltPoint);
+               queue.Enqueue(altPoint);
+               visited.Add(altPoint);
+            }
+
+            if (dist < chunk.patchWaterDistanceMap[localCurrPoint.x, localCurrPoint.y]) {
+               chunk.patchWaterDistanceMap[localCurrPoint.x, localCurrPoint.y] = dist;
+            }
+
+            if (count > 30) {
+               count = 0;
+               yield return null;
+            }
+         }
+      }
+      
+      // Copy over center of patch calcs as waterDistanceMap for this chunk
+      for (int x = 0; x < (int)chunk.bounds.dim; x++) {
+         for (int z = 0; z < (int)chunk.bounds.dim; z++) {
+            count++;
+            //Debug.Log("END: " + x + " " + z + " : " + (x + (int)bounds.dim) + " " + (z + (int)bounds.dim));
+            waterDistanceMap[x, z] = chunk.patchWaterDistanceMap[x + (int)chunk.bounds.dim, z + (int)chunk.bounds.dim];
+         }
+      }
    }
 
    public void LoadChunk(Vector2Int idx) {
