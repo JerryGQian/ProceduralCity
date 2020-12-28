@@ -13,6 +13,7 @@ public class MeshGenerator : MonoBehaviour {
 
    int xSize = WorldManager.dim;
    int zSize = WorldManager.dim;
+   int dim = WorldManager.dim;
 
    // Start is called before the first frame update
    void Start() {
@@ -38,7 +39,7 @@ public class MeshGenerator : MonoBehaviour {
          }
       }
 
-      triangles = new int[xSize * zSize * 6];
+      /*triangles = new int[xSize * zSize * 6];
       int vert = 0;
       int tris = 0;
       for (int z = 0; z < zSize - 1; z++) {
@@ -54,7 +55,24 @@ public class MeshGenerator : MonoBehaviour {
             tris += 6;
          }
          vert++;
+      }*/
+
+      List<int> tris = new List<int>();
+      //Bottom left section of the map, other sections are similar
+      for (int i = 0; i < dim; i++) {
+         for (int j = 0; j < dim; j++) {            
+            //Skip if a new square on the plane hasn't been formed
+            if (i == 0 || j == 0) continue;
+            //Adds the index of the three vertices in order to make up each of the two tris
+            tris.Add(dim * i + j); //Top right
+            tris.Add(dim * i + j - 1); //Bottom right
+            tris.Add(dim * (i - 1) + j - 1); //Bottom left - First triangle
+            tris.Add(dim * (i - 1) + j - 1); //Bottom left 
+            tris.Add(dim * (i - 1) + j); //Top left
+            tris.Add(dim * i + j); //Top right - Second triangle
+         }
       }
+      triangles = tris.ToArray();
    }
 
    public void UpdateMesh() {
