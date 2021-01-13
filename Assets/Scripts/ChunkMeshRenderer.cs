@@ -77,9 +77,9 @@ public class ChunkMeshRenderer : MonoBehaviour {
             //float val = chunk.waterDistanceMap[x,z] / WorldManager.waterDistanceLimit;
             float val = chunk.densityMap[x, z];
             //colors[i] = Color.Lerp(Color.red, Color.green, val);
-            if (i == 100) {
+            /*if (i == 100) {
                Debug.Log(val);
-            }
+            }*/
             colors[i] = Color.Lerp(Color.green, Color.red, val);
             i++;
          }

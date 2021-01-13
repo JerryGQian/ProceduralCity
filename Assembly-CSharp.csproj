@@ -55,19 +55,138 @@
     <Analyzer Include="C:\Program Files (x86)\Microsoft Visual Studio Tools for Unity\16.0\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\Region.cs" />
     <Compile Include="Assets\Scripts\TerrainGen.cs" />
-    <Compile Include="Assets\Scripts\WaterDistance.cs" />
-    <Compile Include="Assets\Scripts\Test\DensityTest.cs" />
-    <Compile Include="Assets\Scripts\MeshGenerator.cs" />
-    <Compile Include="Assets\Scripts\WorldManager.cs" />
-    <Compile Include="Assets\Scripts\Test\WaterDistanceTest.cs" />
     <Compile Include="Assets\Scripts\Quadtree.cs" />
-    <Compile Include="Assets\Scripts\Chunk.cs" />
-    <Compile Include="Assets\Scripts\SpatialUtil.cs" />
+    <Compile Include="Assets\Scripts\WaterDistance.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerController.cs" />
     <Compile Include="Assets\Scripts\Player\CameraController.cs" />
+    <Compile Include="Assets\Scripts\Test\DensityTest.cs" />
+    <Compile Include="Assets\Scripts\Chunk.cs" />
+    <Compile Include="Assets\Scripts\MeshGenerator.cs" />
+    <Compile Include="Assets\Scripts\SpatialUtil.cs" />
+    <Compile Include="Assets\Scripts\WorldManager.cs" />
+    <Compile Include="Assets\Scripts\Test\WaterDistanceTest.cs" />
     <Compile Include="Assets\Scripts\Player\FlyCamera.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
+    <Compile Include="Assets\Scripts\CoordRandom.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Circle.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\LR.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\SiteList.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\EdgeList.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Rectf.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\EdgeReorderer.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Vector2f.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\ICoord.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Triangle.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Winding.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Edge.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Vertex.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Geom\LineSegment.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Halfedge.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Voronoi.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Site.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\HalfedgePriorityQueue.cs" />
+    <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Polygon.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanDemo\Program.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\ResultBuilding\DbscanResultBuilder.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\Eventing\IDbscanEventPublisher.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanResult.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanPoint.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\Eventing\EmptyDbscanEventPublisher.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanAlgorithm.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\Eventing\IDbscanEventSubscriber.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\Eventing\Events.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanDemo\MyFeatureDataSource.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\PointType.cs" />
+    <Compile Include="Assets\Libraries\dbscan\DbscanDemo\MyFeature.cs" />
+    <Compile Include="Assets\Scripts\HighwayGenerator.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\TriangleQuadTree.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\InputTriangle.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\TriangleWriter.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\MeshValidator.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\IVoronoiFactory.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Log.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\SimpleSmoother.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Configuration.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\Otri.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Face.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\ITriangle.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\BoundedVoronoi.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\IConstraintMesher.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Iterators\EdgeIterator.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\TriangleReader.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\DefaultVoronoiFactory.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\DebugWriter.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Enums.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\IPolygon.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\HalfEdge.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\IEdge.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\QualityOptions.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleSampler.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Vertex.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Point.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\ConstraintOptions.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\ISmoother.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\DcelMesh.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\ConstraintMesher.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\VoronoiFactory.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Data\BadTriQueue.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\GenericMesher.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\RegionPointer.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\TriangleFormat.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\CuthillMcKee.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\Legacy\BoundedVoronoiLegacy.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\IQualityMesher.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Properties\AssemblyInfo.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Data\BadSubseg.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\StandardVoronoi.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\Triangle.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IPredicates.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Converter.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\QualityMeasure.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\Osub.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Contour.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Algorithm\SweepLine.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Logging\LogItem.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\QualityMesher.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Edge.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\IMeshFormat.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Algorithm\Dwyer.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Iterators\VertexCirculator.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\Interpolation.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\ExtensionMethods.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Rectangle.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\IntersectionHelper.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Iterators\RegionIterator.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Polygon.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\ITriangulator.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\Legacy\SimpleVoronoi.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Logging\ILog.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\IMesh.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\PolygonValidator.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\FileProcessor.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\Legacy\VoronoiRegion.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\RobustPredicates.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\VoronoiBase.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\IPolygonFormat.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Segment.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\NewLocation.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Logging\ILogItem.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Mesh.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\Legacy\IVoronoi.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\Statistic.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\AdjacencyMatrix.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\SubSegment.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\VertexSorter.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\ISegment.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Behavior.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Algorithm\Incremental.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\IFileFormat.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TrianglePool.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Data\BadTriangle.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
+    <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />
@@ -259,6 +378,9 @@
     </Reference>
     <Reference Include="UnityEditor">
       <HintPath>C:\Program Files\Unity\Hub\Editor\2020.1.4f1\Editor\Data\Managed\UnityEditor.dll</HintPath>
+    </Reference>
+    <Reference Include="DelaunatorSharp">
+      <HintPath>Library\PackageCache\com.nol1fe.delaunator@50d762203e\Runtime\DelaunatorSharp.dll</HintPath>
     </Reference>
     <Reference Include="UnityEditor.iOS.Extensions.Xcode">
       <HintPath>C:\Program Files\Unity\Hub\Editor\2020.1.4f1\Editor\Data\PlaybackEngines\iOSSupport\UnityEditor.iOS.Extensions.Xcode.dll</HintPath>
@@ -679,6 +801,9 @@
     </Reference>
     <Reference Include="UnityEditor.UI">
       <HintPath>Library\ScriptAssemblies\UnityEditor.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="DelaunatorSharp.Runtime">
+      <HintPath>Library\ScriptAssemblies\DelaunatorSharp.Runtime.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
