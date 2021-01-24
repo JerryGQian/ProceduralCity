@@ -61,7 +61,7 @@ public class Chunk {
       Vector2Int center = bounds.GetCenter();
       Vector2Int localCenter = GetLocalCoord(center);
 
-      terrainSnapshot = GenerateTerrainAt(center.x, center.y);
+      terrainSnapshot = TerrainGen.GenerateTerrainAt(center.x, center.y);
       terrainHeightMap[localCenter.x, localCenter.y] = terrainSnapshot;
 
       densitySnapshot = CalculateDensityAt(center.x, center.y);
@@ -216,39 +216,31 @@ public class Chunk {
          d /= ((300 - 100) / 150) + 1;
       }
       else if (p.magnitude > 100) {
-         d /= ((p.magnitude - 100) / 100) + 1;
+         d /= ((p.magnitude - 100) / 150) + 1;
       }
-      else {
 
-      }
       return d;
    }
 
    void GenerateTerrain() {
       for (int x = (int)bounds.xMin; x < bounds.xMax+1; x++) {
          for (int z = (int)bounds.zMin; z < bounds.zMax+1; z++) {
-            /*float y = Mathf.PerlinNoise(x * .030f + 15000, z * .030f + 15000) * 10f - 5f
-                     + Mathf.PerlinNoise(x * .030f + 10000, z * .030f + 10000) * 10f - 5f
-                     + Mathf.PerlinNoise(x * .004f + 10000, z * .004f + 10000) * 25f - 5f
-                     + 4.5f;
-            y = Mathf.Pow(0.12f * y, 3) + 0.2f * y;
-            */
             Vector2Int localPoint = GetLocalCoord(new Vector2Int(x, z));
-            terrainHeightMap[localPoint.x, localPoint.y] = GenerateTerrainAt(x,z);
+            terrainHeightMap[localPoint.x, localPoint.y] = TerrainGen.GenerateTerrainAt(x,z);
          }
       }
       
       state = ChunkState.PRELOADED;
    }
 
-   float GenerateTerrainAt(int x, int z) {
+   /*float GenerateTerrainAt(int x, int z) {
       float y = Mathf.PerlinNoise(x * .030f + 15000, z * .030f + 15000) * 10f - 5f
                      + Mathf.PerlinNoise(x * .030f + 10000, z * .030f + 10000) * 10f - 5f
                      + Mathf.PerlinNoise(x * .004f + 10000, z * .004f + 10000) * 25f - 5f
                      + 4.5f;
       y = Mathf.Pow(0.12f * y, 3) + 0.2f * y;
       return y;
-   }
+   }*/
 
    void PrepareWaterList() {
       for (int x = (int)bounds.xMin; x < bounds.xMax; x += 2) {

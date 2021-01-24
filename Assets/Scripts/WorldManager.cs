@@ -1,33 +1,31 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using TriangleNet.Geometry;
-using TriangleNet.Meshing;
-using TriangleNet.Meshing.Algorithm;
-
-
 
 public class WorldManager : MonoBehaviour {
 
+   public WorldBuilder wb;
+   public GameObject chunkMeshesParent;
    public static int dim = 500;
    public static int dimArea = dim * dim;
    public static float[,] landValueMap = new float[dim, dim];
    public static float[,] terrainHeightMap = new float[dim, dim];
    public static float[,] waterDistanceMap = new float[dim, dim];
    public static float[] waterDistanceArr = new float[dimArea];
+   public static Dictionary<(Vector2, Vector2), bool> edgeState = new Dictionary<(Vector2, Vector2), bool>();
 
    //public static Random randomSequence = new Random(12345);
    //int randomNumber1 = randomSequence.Next();
 
    public static float waterDistanceLimit = 15;
 
-   public static int loadRadius = 5;
+   public static int loadRadius = 20;
    public static int chunkSize = 10;
-   private Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
-   private Dictionary<Vector2Int, GameObject> chunkMeshes = new Dictionary<Vector2Int, GameObject>();
+   public static Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
+   public static Dictionary<Vector2Int, GameObject> chunkMeshes = new Dictionary<Vector2Int, GameObject>();
 
-   public static int regionDim = 11; // num of chunks in length, must be odd
-   private Dictionary<Vector2Int, Region> regions = new Dictionary<Vector2Int, Region>();
+   public static int regionDim = 25; // num of chunks in length, must be odd
+   public static Dictionary<Vector2Int, Region> regions = new Dictionary<Vector2Int, Region>();
 
    public GameObject ChunkMeshPrefab;
    public GameObject indicator; // for visualization
@@ -37,7 +35,7 @@ public class WorldManager : MonoBehaviour {
 
    // Start is called before the first frame update
    void Start() {
-      InvokeRepeating("LoadLocalChunks", 0, 0.5f);
+      InvokeRepeating("LoadLocal", 0, 0.75f);
       //InvokeRepeating("DestroyDistantChunks", 0.5f, 0.5f);
    }
 
@@ -58,40 +56,48 @@ public class WorldManager : MonoBehaviour {
       }
    }
 
-   void LoadLocalChunks() {
-      StartCoroutine("LoadLocalChunksCoroutine");
+   void LoadLocal() {
+      StartCoroutine("GenLocalCoroutine");
    }
-
    // Preload/Loads at player position
-   IEnumerator LoadLocalChunksCoroutine() {
+   IEnumerator GenLocalCoroutine() {
       Vector3 pos3 = player.transform.position;
       Vector2Int idx = W2C(pos3);
-      //Debug.Log("Loading local: " + idx);
-      int i = 0;
+
+      // Snapshot Region and build highways
+      GenRegionPatch(idx);
+
+      ArrayList idxToProcess = new ArrayList();
       foreach (Vector2Int v in GetPatchIdx(idx)) {
-         //LoadChunkAtPos(v);
-         StartCoroutine("LoadChunkAtPos", v);
-         if (i % 4 == 0) {
+         idxToProcess.Add(v);
+      }
+
+      int i = 0;
+      foreach (Vector2Int v in idxToProcess) {
+         // Preloads patch & Loads center
+         StartCoroutine("GenChunkAtIdx", v);
+         //GenChunkAtIdx(v);
+
+         if (chunks[idx].state == ChunkState.UNLOADED || chunks[idx].state == ChunkState.SNAPSHOTTED) {
+            i++;
+         }
+         if (i % 10 == 0) {
             yield return null;
          }
       }
    }
 
    // Preloads 3x3 patch, Loads center
-   IEnumerator LoadChunkAtPos(Vector2Int idx) {
-      // Snapshot Region
-      GenRegionPatch(idx);
-
-
+   IEnumerator GenChunkAtIdx(Vector2Int idx) {
       // Preload Chunk
       for (int i = -1; i <= 1; i++) {
          for (int j = -1; j <= 1; j++) {
             PreloadChunk(idx + new Vector2Int(i, j));
-            yield return null;
          }
       }
       LoadChunk(idx);
       RenderChunk(idx);
+      yield return null;
    }
 
    // Snapshots /////////////////////////////////////////////////////////////////////
@@ -101,15 +107,14 @@ public class WorldManager : MonoBehaviour {
       Vector2Int regionIdx = W2R(new Vector2Int((int)world.x, (int)world.y));
       //Debug.Log(world + " " + regionIdx);
       ArrayList patchDensityCenters = new ArrayList();
-      for (int i = -1; i <= 1; i++) {
-         for (int j = -1; j <= 1; j++) {
+      for (int i = -2; i <= 2; i++) {
+         for (int j = -2; j <= 2; j++) {
             Region region;
             Vector2Int thisIdx = regionIdx + new Vector2Int(i, j);
             if (regions.ContainsKey(thisIdx)) {
                region = regions[thisIdx];
             }
             else {
-               //Debug.Log("New region:" + thisIdx);
                float[,] densitySnapshots = SnapshotRegion(thisIdx);
                region = new Region(thisIdx, densitySnapshots);
 
@@ -120,14 +125,13 @@ public class WorldManager : MonoBehaviour {
                region.CalcDensityCenters();
             }
 
-            foreach (Vector2 c in region.densityCenters) {
-               patchDensityCenters.Add(c);
+            foreach ((Vector2, float) cd in region.densityCenters) {
+               patchDensityCenters.Add(cd);
             }
 
             if (!region.generated) {
-               foreach (Vector2 center in region.densityCenters) {
-                  //Debug.Log("center: " + center + " " + C2W(center) + " " + thisIdx * regionDim * chunkSize);
-                  //Vector2 gc = center;//C2W(center) + thisIdx * regionDim * chunkSize;
+               foreach ((Vector2, float) cd in region.densityCenters) {
+                  Vector2 center = cd.Item1;
                   Instantiate(indicator, new Vector3(center.x, 10, center.y), Quaternion.identity);
                }
                region.generated = true;
@@ -137,43 +141,18 @@ public class WorldManager : MonoBehaviour {
 
       // Gen highway
       if (regions[regionIdx].state != RegionState.PATCH_EXECUTED) {
+         regions[regionIdx].state = RegionState.PATCH_EXECUTED;
          HighwayGenerator highwayGen = new HighwayGenerator(patchDensityCenters);
          highwayGen.GenHighway();
-         BuildHighway(highwayGen.mesh, regionIdx);
-         regions[regionIdx].state = RegionState.PATCH_EXECUTED;
+         //Debug.Log(highwayGen.edges + " --- " + highwayGen.vertices + " " + regionIdx + " " + wb == null);
+         //wb.BuildHighway(highwayGen.mesh, regionIdx);
+         wb.BuildHighway(highwayGen.edges, highwayGen.vertices, regionIdx);
       }
-   }
-
-   private void BuildHighway(IMesh mesh, Vector2Int regionIdx) {
-      ArrayList vert = new ArrayList();
-      foreach (var v in mesh.Vertices) {
-         vert.Add(v);
-      }
-
-      foreach (var e in mesh.Edges) {
-         Vector2 P0 = new Vector2((float)((Vertex)vert[e.P0]).X, (float)((Vertex)vert[e.P0]).Y);
-         Vector2 P1 = new Vector2((float)((Vertex)vert[e.P1]).X, (float)((Vertex)vert[e.P1]).Y);
-
-         if (regions[regionIdx].bounds.InBounds(P0) || regions[regionIdx].bounds.InBounds(P1)) {
-            float dist = (P0 - P1).magnitude;
-
-
-            Debug.Log(P0 + " -> " + P1 + " " + dist);
-
-            float x = (float)(P0.x + P1.x) / 2;
-            float y = (float)(P0.y + P1.y) / 2;
-
-            Vector2 vec = new Vector2(P1.x - P0.x, P1.y - P0.y);
-
-            float angle = Mathf.Atan2(P1.x - P0.x, P1.y - P0.y) * Mathf.Rad2Deg + 90;
-
-            GameObject segment = Instantiate(cube, new Vector3(x, 10, y), Quaternion.AngleAxis(angle, Vector3.up));
-            Transform trans = segment.GetComponent<Transform>();
-            //trans.position = new Vector3(x, 0, y);
-            //trans.rotation = Quaternion.AngleAxis(angle, Vector3.up);
-            trans.localScale = new Vector3(vec.magnitude, 1, 2);
+      /*for (int i = -1; i <= 1; i++) {
+         for (int j = -1; j <= 1; j++) {
+            Vector2Int thisIdx = regionIdx + new Vector2Int(i, j);
          }
-      }
+      }*/
    }
 
    public float[,] SnapshotRegion(Vector2Int regionIdx) {
@@ -240,6 +219,7 @@ public class WorldManager : MonoBehaviour {
       //Debug.Log("Rendering: " + idx + " " + chunkMeshes.ContainsKey(idx));
       if (!chunkMeshes.ContainsKey(idx)) {
          GameObject chunkMesh = Instantiate(ChunkMeshPrefab, new Vector3(0, 0, 0), Quaternion.identity);
+         chunkMesh.transform.parent = chunkMeshesParent.transform;
          ChunkMeshRenderer renderer = chunkMesh.GetComponent<ChunkMeshRenderer>();
          renderer.BuildMesh(chunks[idx]);
          chunkMeshes[idx] = chunkMesh;
@@ -280,7 +260,7 @@ public class WorldManager : MonoBehaviour {
    }
 
    // World coordinate to Region index
-   public Vector2Int W2R(Vector2 worldCoord) {
+   public static Vector2Int W2R(Vector2 worldCoord) {
       int regionSize = regionDim * chunkSize;
 
       if (worldCoord.x < 0) {
@@ -292,14 +272,14 @@ public class WorldManager : MonoBehaviour {
       return new Vector2Int((int)(worldCoord.x / regionSize), (int)(worldCoord.y / regionSize));
    }
 
-   public Vector2Int RegionIdx2ChunkCenter(Vector2Int regionIdx) {
+   public static Vector2Int RegionIdx2ChunkCenter(Vector2Int regionIdx) {
       int regionOffsetMag = (regionDim - 1) / 2;
 
       return new Vector2Int((regionIdx.x * regionDim) + regionOffsetMag, (regionIdx.y * regionDim) + regionOffsetMag);
    }
 
    // World coordinate to Chunk index
-   public Vector2Int W2C(Vector2 worldCoord) {
+   public static Vector2Int W2C(Vector2 worldCoord) {
 
       if (worldCoord.x < 0) {
          worldCoord.x -= chunkSize;
@@ -309,12 +289,12 @@ public class WorldManager : MonoBehaviour {
       }
       return new Vector2Int((int)(worldCoord.x / chunkSize), (int)(worldCoord.y / chunkSize));
    }
-   public Vector2Int W2C(Vector3 worldCoord) {
+   public static Vector2Int W2C(Vector3 worldCoord) {
       return W2C(new Vector2(worldCoord.x, worldCoord.z));
    }
 
    // Chunk index to World coordinate of chunk center
-   public Vector2 C2W(Vector2Int worldCoord) {
+   public static Vector2 C2W(Vector2Int worldCoord) {
       return new Vector2Int((int)(worldCoord.x * chunkSize) + chunkSize / 2, (int)(worldCoord.y * chunkSize) + chunkSize / 2);
    }
 

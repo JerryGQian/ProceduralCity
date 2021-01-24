@@ -15,13 +15,12 @@ public class Region {
    public bool generated = false; // for debugging vis
    public CoordRandom rand;
 
-   ArrayList densityClusters;
    public ArrayList densityCenters;
    ArrayList densityChunks;
    ArrayList densityRanking;
 
    float[,] densitySnapshots = new float[WorldManager.regionDim, WorldManager.regionDim];
-   float distanceThreshold = 5f;
+   float distanceThreshold = 7f;
 
    public Region(Vector2Int regionIdx, float[,] densitySnapshots) {
       float regionSize = WorldManager.regionDim * WorldManager.chunkSize;
@@ -29,7 +28,6 @@ public class Region {
       this.regionIdx = regionIdx;
       this.densitySnapshots = densitySnapshots;
       rand = new CoordRandom(regionIdx);
-      densityClusters = new ArrayList();
       densityCenters = new ArrayList();
       densityChunks = new ArrayList();
       densityRanking = new ArrayList();
@@ -63,12 +61,12 @@ public class Region {
          int centers = 0;
          Vector2Int top = (Vector2Int)densityRanking[0];
          if (densitySnapshots[(int)top.x, (int)top.y] == 1f) {
-            centers = 3;
-         }
-         else if (densitySnapshots[(int)top.x, (int)top.y] > 0.85f) {
             centers = 2;
          }
-         else if (densitySnapshots[(int)top.x, (int)top.y] > 0.5f) {
+         else if (densitySnapshots[(int)top.x, (int)top.y] > 0.9f) {
+            centers = 2;
+         }
+         else if (densitySnapshots[(int)top.x, (int)top.y] > 0.52f) {
             centers = 1;
          }
 
@@ -92,7 +90,8 @@ public class Region {
             Vector2 center = C2W(chunk) + regionIdx * WorldManager.regionDim * WorldManager.chunkSize;
             center += rand.NextVector2(0, 10);
 
-            densityCenters.Add(center);
+            //densityCenters.Add(center);
+            densityCenters.Add((center, densitySnapshots[chunk.x, chunk.y]));
          }
          //Debug.Log("Total centers: " + densityCenters.Count);
 

@@ -11,7 +11,14 @@ public class FlyCamera : MonoBehaviour {
    void Update() {
       lastMouse = Input.mousePosition - lastMouse;
       lastMouse = new Vector3(-lastMouse.y * camSens, lastMouse.x * camSens, 0);
+      
       Vector3 camRot = new Vector3(camera.transform.eulerAngles.x + lastMouse.x, camera.transform.eulerAngles.y + lastMouse.y, 0);
+      if (camRot.x > 89 && camRot.x < 180) {
+         camRot.x = 89;
+      }
+      if (camRot.x < 271 && camRot.x > 180) {
+         camRot.x = 271;
+      }
       Vector3 bodyRot = new Vector3(0, transform.eulerAngles.y + lastMouse.y, 0);
       transform.eulerAngles = bodyRot;
       camera.transform.eulerAngles = camRot;
