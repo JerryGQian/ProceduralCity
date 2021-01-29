@@ -10,32 +10,41 @@ using TriangleNet.Tools;
 
 // Given patch of regions, generates highways
 public class HighwayGenerator {
-   public ArrayList highwaySegments;
+   public ArrayList highways;
+
    public IMesh mesh;
    public ArrayList edges;
    public ArrayList vertices;
    public Dictionary<Vertex, List<Vertex>> neighbors;
-   //private HashSet<Vertex> visited;
-   //public Dictionary<Vertex, List<Vertex>> neighbors = new Dictionary<Vertex, List<Vertex>>();
+   public Vector2Int regionIdx;
+
    ArrayList patchDensityCenters;
 
    private float costLimit = 240f;
-   private float vertexReward = 20f;
-   private float vertexRewardRatio = 0.35f; //ratio of euclidean distance
-   private float densityReward = 25f;
+   private float vertexReward = 30f;
+   private float vertexRewardRatio = 0.50f; //ratio of euclidean distance
+   private float densityReward = 30f;
 
    private Pathfinding pathfinding = new Pathfinding();
 
 
-   public HighwayGenerator(ArrayList patchDensityCenters) {
+   private int hashChunkWidth = 2;
+
+
+   public HighwayGenerator(ArrayList patchDensityCenters, Vector2Int regionIdx) {
       this.patchDensityCenters = patchDensityCenters;
-      highwaySegments = new ArrayList();
+      highways = new ArrayList();
       edges = new ArrayList();
       vertices = new ArrayList();
       neighbors = new Dictionary<Vertex, List<Vertex>>();
+      this.regionIdx = regionIdx;
    }
 
-   public void GenHighway() {
+   public IEnumerator GenHighway() {
+      return GenHighwayCoroutine();
+   }
+
+   IEnumerator GenHighwayCoroutine() {
       Dictionary<Vector2, float> densityLookup = new Dictionary<Vector2, float>();
 
       // cluster nearby points with DBScan
@@ -85,15 +94,17 @@ public class HighwayGenerator {
          //Debug.Log(e.P0 + " " + e.P1);
          (Vector2, Vector2) tup1 = (VertexToVector2(v0), VertexToVector2(v1));
          (Vector2, Vector2) tup2 = (VertexToVector2(v1), VertexToVector2(v0));
+
+         if (!InPatchBounds(regionIdx, tup1.Item1, tup1.Item2)) {
+            RemoveEdge(e);
+            continue;
+         }
+
          if (!WorldManager.edgeState.ContainsKey(tup1)) { //needs removal check
             if (ShouldRemoveEdge(e, densityLookup)) {
                WorldManager.edgeState[tup1] = false;
                WorldManager.edgeState[tup2] = false;
-               for (int i = 0; i < edges.Count; i++) {
-                  if (IsSameEdge((Edge)edges[i], e)) {
-                     edges.RemoveAt(i);
-                  }
-               }
+               RemoveEdge(e);
                //Debug.Log("Removing edge: " + ((Vertex)vertices[e.P0]).X + "," + ((Vertex)vertices[e.P0]).Y + " to " + ((Vertex)vertices[e.P1]).X + "," + ((Vertex)vertices[e.P1]).Y);
             }
             else {
@@ -103,12 +114,7 @@ public class HighwayGenerator {
          }
          else { // remove if removed before
             if (!WorldManager.edgeState[tup1]) {
-               for (int i = 0; i < edges.Count; i++) {
-                  if (IsSameEdge((Edge)edges[i], e)) {
-                     edges.RemoveAt(i);
-                  }
-               }
-               //Debug.Log("Removing edge again: " + ((Vertex)vertices[e.P0]).X + "," + ((Vertex)vertices[e.P0]).Y + " to " + ((Vertex)vertices[e.P1]).X + "," + ((Vertex)vertices[e.P1]).Y);
+               RemoveEdge(e);
             }
          }
       }
@@ -116,16 +122,152 @@ public class HighwayGenerator {
       // Generate final highway segments for each edge
       // Uses A* search to pathfind
       foreach (Edge e in edges) {
+         (Vector2Int, Vector2Int) eVec = (VertexToVector2Int((Vertex)vertices[e.P0]), VertexToVector2Int((Vertex)vertices[e.P1]));
          Vertex v0 = (Vertex)vertices[e.P0];
          Vertex v1 = (Vertex)vertices[e.P1];
 
          // A* pathfind from v0 to v1
-         List<Vector2> path = pathfinding.FindPath(VertexToVector2(v0), VertexToVector2(v1));
-         if (path != null) Debug.Log("Path: " + path.Count);
+         ArrayList segments = pathfinding.FindPath(VertexToVector2(v0), VertexToVector2(v1));
+
+         // Removal of redundant paths
+         int firstIdx = -1, secondIdx = -1;
+         List<(Vector2, (Vector2Int, Vector2Int))> vertListFirst = null, vertListSecond = null;
+         // traverse from beginning
+         for (int i = 0; i < segments.Count - 1; i++) {
+            Vector2 v = (Vector2)segments[i];
+            
+            //Vector2Int chunkIdx = Util.W2C(v);
+            //Debug.Log(DoesChunkContainHighway(chunkIdx) + " " + chunkIdx + " " + v);
+            if (DoesChunkContainHighway(v)) {
+               firstIdx = i;
+               vertListFirst = GetHighwayVertList(v);
+               break;
+            }
+         }
+         // traverse from end
+         if (firstIdx >= 0) {
+            for (int i = segments.Count - 1; i > 0; i--) {
+               Vector2 v = (Vector2)segments[i];
+               //Vector2Int chunkIdx = Util.W2C(v);
+               if (DoesChunkContainHighway(v)) {
+                  secondIdx = i;
+                  vertListSecond = GetHighwayVertList(v);
+                  break;
+               }
+            }
+         }
+
+         /*if (new Vector2((float)v1.X, (float)v1.Y) == new Vector2(-440f, 270f)) {
+            Debug.Log("found: " + firstIdx + " " + secondIdx + " tot:" + segments.Count);
+         }*/
+
+         // segment join logic
+         if (vertListFirst != null && vertListSecond != null && firstIdx >= 0 && secondIdx >= 0) {
+            // Direct connection with existing path
+            bool done = false;
+            // *--|____/*
+            foreach ((Vector2, (Vector2Int, Vector2Int)) tup in vertListFirst) {
+               if (eVec.Item2 == tup.Item2.Item2 || eVec.Item2 == tup.Item2.Item1) {
+                  segments.RemoveRange(firstIdx, segments.Count - firstIdx);
+                  segments.Insert(firstIdx, tup.Item1);
+                  done = true;
+                  break;
+               }
+            }
+            if (!done) {
+               // *\____|--*
+               foreach ((Vector2, (Vector2Int, Vector2Int)) tup in vertListSecond) {
+                  if (eVec.Item1 == tup.Item2.Item2 || eVec.Item1 == tup.Item2.Item1) {
+                     segments.RemoveRange(0, secondIdx);
+                     if (new Vector2((float)v1.X, (float)v1.Y) == new Vector2(-440f, 270f)) {
+                        Debug.Log("found: " + firstIdx + " " + secondIdx + " tot post:" + segments.Count);
+                     }
+                     //Debug.Log(tup.Item1);
+                     segments.Insert(0, tup.Item1);
+                     done = true;
+                     break;
+                  }
+               }
+            }
+
+            if (!done) {
+               // No direct connection cases (needs paths from start and end)
+               (bool, (Vector2Int, Vector2Int)) sameEdgeRes = DoListsContainSameEdge(vertListFirst, vertListSecond);
+               if (sameEdgeRes.Item1) {
+                  Vector2 con1 = FindVecWithEdge(sameEdgeRes.Item2, vertListFirst), con2 = FindVecWithEdge(sameEdgeRes.Item2, vertListSecond);
+                  if (con1 == con2) { // same vert
+                                      // *--|-----* pass through path
+                     segments.RemoveAt(firstIdx);
+                     segments.Insert(firstIdx, con1);
+                  }
+                  else { // diff vert
+                         // *--|__|--* join at existing path
+                         //Debug.Log(firstIdx + " " + secondIdx);
+                     segments.RemoveRange(firstIdx, secondIdx - firstIdx + 1);
+                     segments.Insert(firstIdx, con2);
+                     segments.Insert(firstIdx, WorldBuilder.SignalVector);
+                     segments.Insert(firstIdx, con1);
+                  }
+               }
+               else {// not matched so edges different!
+                  Vector2 con1 = vertListFirst[0].Item1, con2 = vertListSecond[0].Item1;
+                  //neighbor or not
+
+                  // *--|--|--* pass through paths
+                  segments.RemoveAt(secondIdx);
+                  segments.RemoveAt(firstIdx);
+                  segments.Insert(firstIdx, con1);
+                  segments.Insert(secondIdx, con2);
+
+                  // *--\./---*
+                  // TBD
+               }
+            }
+         }
+
+         foreach (Vector2 v in segments) {
+            AddHighwayVertToChunkHash(v, eVec);
+         }
+
+         if (segments != null) highways.Add(segments);
+         yield return null;
       }
    }
 
-   private bool InPatchBounds(Vector2Int regionIdx, Vector2 P0, Vector2 P1) {
+   private void RemoveEdge(Edge e) {
+      for (int i = 0; i < edges.Count; i++) {
+         if (IsSameEdge((Edge)edges[i], e)) {
+            edges.RemoveAt(i);
+         }
+      }
+   }
+
+   private (bool, (Vector2Int, Vector2Int)) DoListsContainSameEdge(List<(Vector2, (Vector2Int, Vector2Int))> list1, List<(Vector2, (Vector2Int, Vector2Int))> list2) {
+      // build edge matching hashset
+      HashSet<(Vector2Int, Vector2Int)> edgeSet = new HashSet<(Vector2Int, Vector2Int)>();
+      foreach ((Vector2, (Vector2Int, Vector2Int)) pair in list1) {
+         edgeSet.Add(pair.Item2);
+         edgeSet.Add((pair.Item2.Item2, pair.Item2.Item1));
+      }
+      // find matching edge (if any)
+      foreach ((Vector2, (Vector2Int, Vector2Int)) pair in list2) {
+         if (edgeSet.Contains(pair.Item2)) { // found same edge
+            return (true, pair.Item2);
+         }
+      }
+      return (false, (Vector2Int.zero, Vector2Int.zero));
+   }
+
+   private Vector2 FindVecWithEdge((Vector2Int, Vector2Int) edge, List<(Vector2, (Vector2Int, Vector2Int))> list) {
+      foreach ((Vector2, (Vector2Int, Vector2Int)) pair in list) {
+         if (Util.SameEdge(edge, pair.Item2)) {
+            return pair.Item1;
+         }
+      }
+      return Vector2.zero;
+   }
+
+   public static bool InPatchBounds(Vector2Int regionIdx, Vector2 P0, Vector2 P1) {
       for (int i = -1; i <= 1; i++) {
          for (int j = -1; j <= 1; j++) {
             if (WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P0) || WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P1)) {
@@ -194,6 +336,10 @@ public class HighwayGenerator {
       return new Vector2((float)vert.X, (float)vert.Y);
    }
 
+   private Vector2Int VertexToVector2Int(Vertex vert) {
+      return new Vector2Int((int)vert.X, (int)vert.Y);
+   }
+
    private static DbscanResult<Vector2> RunOfflineDbscan(List<Vector2> features) {
       var simpleDbscan = new DbscanAlgorithm<Vector2>(EuclideanDistance);
 
@@ -212,5 +358,38 @@ public class HighwayGenerator {
 
    private static double EuclideanDistance(Vector2 feature1, Vector2 feature2) {
       return (feature1 - feature2).magnitude;
+   }
+
+   //Highway collision
+   public void AddHighwayVertToChunkHash(Vector2 vert, (Vector2Int, Vector2Int) edge) {
+      Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
+      if (!WorldBuilder.highwayVertChunkHash.ContainsKey(chunk)) {
+         WorldBuilder.highwayVertChunkHash[chunk] = new List<(Vector2, (Vector2Int, Vector2Int))>();
+      }
+
+      WorldBuilder.highwayVertChunkHash[chunk].Add((vert, edge));
+   }
+
+   public List<(Vector2, (Vector2Int, Vector2Int))> GetHighwayVertList(Vector2 vert) {
+      Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
+      if (!WorldBuilder.highwayVertChunkHash.ContainsKey(chunk)) {
+         return null;
+      }
+
+      return WorldBuilder.highwayVertChunkHash[chunk];
+   }
+
+   public bool DoesChunkContainHighway(Vector2 vert) {
+      Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
+      return WorldBuilder.highwayVertChunkHash.ContainsKey(chunk);
+   }
+   private Vector2Int HashChunkGrouping(Vector2Int chunk) {
+      if (chunk.x < 0) {
+         chunk.x -= 1;
+      }
+      if (chunk.y < 0) {
+         chunk.y -= 1;
+      }
+      return chunk / hashChunkWidth;
    }
 }

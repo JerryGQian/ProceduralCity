@@ -20,7 +20,7 @@ public class Region {
    ArrayList densityRanking;
 
    float[,] densitySnapshots = new float[WorldManager.regionDim, WorldManager.regionDim];
-   float distanceThreshold = 7f;
+   float distanceThreshold = 9f;
 
    public Region(Vector2Int regionIdx, float[,] densitySnapshots) {
       float regionSize = WorldManager.regionDim * WorldManager.chunkSize;
@@ -73,11 +73,11 @@ public class Region {
          // choose n coordinates from the top rankings as centers
          for (int i = 0; i < centers; i++) {
             Vector2Int v = (Vector2Int)densityRanking[i];
-            if (!TooClose(v, densityChunks)) {
+            Vector2 worldV = C2W(v) + regionIdx * WorldManager.regionDim * WorldManager.chunkSize;
+            Vector2Int worldVInt = Util.VecToVecInt(worldV);
+            if (!TooClose(v, densityChunks) && TerrainGen.GenerateTerrainAt(worldVInt.x, worldVInt.y) > 0) {
+               //Debug.Log(TerrainGen.GenerateTerrainAt(v.x, v.y) + " " + v);
                densityChunks.Add(v);
-               /*if (i == 0) {
-                  densityClusters.Add(v);
-               }*/
             }
             else {
                centers++;
@@ -88,14 +88,10 @@ public class Region {
          for (int i = 0; i < densityChunks.Count; i++) {
             Vector2Int chunk = (Vector2Int)densityChunks[i];
             Vector2 center = C2W(chunk) + regionIdx * WorldManager.regionDim * WorldManager.chunkSize;
-            center += rand.NextVector2(0, 10);
+            //center += rand.NextVector2(0, 10);
 
-            //densityCenters.Add(center);
             densityCenters.Add((center, densitySnapshots[chunk.x, chunk.y]));
-         }
-         //Debug.Log("Total centers: " + densityCenters.Count);
-
-         
+         }         
 
          state = RegionState.EXECUTED;
       }

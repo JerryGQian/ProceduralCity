@@ -25,6 +25,7 @@ public class PathNode {
    public float fCost;
 
    public bool isWalkable;
+   public bool isWater;
    public PathNode cameFromNode;
 
    public PathNode(int x, int y) { //Grid<PathNode> grid, 
@@ -33,6 +34,7 @@ public class PathNode {
       this.y = y;
       height = TerrainGen.GenerateTerrainAt(x, y);
       isWalkable = height > 0;
+      isWater = height <= 0;
    }
 
    public void CalculateFCost() {
@@ -41,7 +43,10 @@ public class PathNode {
 
    public void SetIsWalkable(bool isWalkable) {
       this.isWalkable = isWalkable;
-      //grid.TriggerGridObjectChanged(x, y);
+   }
+
+   public Vector2 Vector2Int() {
+      return new Vector2Int(x,y);
    }
 
    public override string ToString() {

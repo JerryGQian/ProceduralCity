@@ -142,17 +142,19 @@ public class WorldManager : MonoBehaviour {
       // Gen highway
       if (regions[regionIdx].state != RegionState.PATCH_EXECUTED) {
          regions[regionIdx].state = RegionState.PATCH_EXECUTED;
-         HighwayGenerator highwayGen = new HighwayGenerator(patchDensityCenters);
+         StartCoroutine(GenBuildHighway(patchDensityCenters, regionIdx));
+         /*HighwayGenerator highwayGen = new HighwayGenerator(patchDensityCenters);
          highwayGen.GenHighway();
-         //Debug.Log(highwayGen.edges + " --- " + highwayGen.vertices + " " + regionIdx + " " + wb == null);
-         //wb.BuildHighway(highwayGen.mesh, regionIdx);
-         wb.BuildHighway(highwayGen.edges, highwayGen.vertices, regionIdx);
+         wb.BuildHighway(highwayGen, highwayGen.edges, highwayGen.vertices, regionIdx);*/
       }
-      /*for (int i = -1; i <= 1; i++) {
-         for (int j = -1; j <= 1; j++) {
-            Vector2Int thisIdx = regionIdx + new Vector2Int(i, j);
-         }
-      }*/
+   }
+
+   IEnumerator GenBuildHighway(ArrayList patchDensityCenters, Vector2Int regionIdx) {
+      HighwayGenerator highwayGen = new HighwayGenerator(patchDensityCenters, regionIdx);
+      IEnumerator genHighwayCoroutine = highwayGen.GenHighway();
+      yield return StartCoroutine(genHighwayCoroutine);
+      wb.BuildHighway(highwayGen, highwayGen.edges, highwayGen.vertices, regionIdx);
+      yield return null;
    }
 
    public float[,] SnapshotRegion(Vector2Int regionIdx) {
