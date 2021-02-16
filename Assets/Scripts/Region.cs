@@ -6,27 +6,45 @@ public enum RegionState {
    UNEXECUTED, // not set up
    EXECUTED, // fully loaded
    PATCH_EXECUTED,
+   ARTERIAL_LAYOUT_PREPARED
 }
 
 public class Region {
    public Bounds bounds;
    public RegionState state = RegionState.UNEXECUTED;
    public Vector2Int regionIdx;
+
    public bool generated = false; // for debugging vis
+   public bool highwayCentersGenerated = false;
+   public bool highwayPatchExecuted = false;
+   public bool highwaysBuilt = false;
+   public bool arterialLayoutGenerated = false;
+   public bool arterialLayoutBuilt = false; // for debugging vis
+   //public bool arterialRoadsBuilt = false;
+
    public CoordRandom rand;
 
    public ArrayList densityCenters;
    ArrayList densityChunks;
    ArrayList densityRanking;
 
-   float[,] densitySnapshots = new float[WorldManager.regionDim, WorldManager.regionDim];
+   public float[,] densitySnapshots = new float[WorldManager.regionDim, WorldManager.regionDim];
+   public Dictionary<Vector2Int, float> densitySnapshotsMap;
    float distanceThreshold = 9f;
 
-   public Region(Vector2Int regionIdx, float[,] densitySnapshots) {
+   //highway vars
+   public HighwayGenerator hwg;
+
+   //arterial road vars
+   public ArterialGenerator atg;
+   
+
+   public Region(Vector2Int regionIdx, float[,] densitySnapshots, Dictionary<Vector2Int, float> densitySnapshotsMap) {
       float regionSize = WorldManager.regionDim * WorldManager.chunkSize;
       bounds = new Bounds(regionSize, regionIdx.x * regionSize, regionIdx.y * regionSize);
       this.regionIdx = regionIdx;
       this.densitySnapshots = densitySnapshots;
+      this.densitySnapshotsMap = densitySnapshotsMap;
       rand = new CoordRandom(regionIdx);
       densityCenters = new ArrayList();
       densityChunks = new ArrayList();
@@ -34,7 +52,7 @@ public class Region {
    }
 
    public void CalcDensityCenters() {
-      if (state != RegionState.EXECUTED) {
+      if (!highwayCentersGenerated) {
          for (int i = 0; i < WorldManager.regionDim; i++) {
             for (int j = 0; j < WorldManager.regionDim; j++) {
                if (densityRanking.Count == 0) {
@@ -60,13 +78,13 @@ public class Region {
          // determine # centers based on highest density
          int centers = 0;
          Vector2Int top = (Vector2Int)densityRanking[0];
-         if (densitySnapshots[(int)top.x, (int)top.y] == 1f) {
+         if (densitySnapshots[(int)top.x, (int)top.y] == 0.9f) {
+            centers = 3;
+         }
+         else if (densitySnapshots[(int)top.x, (int)top.y] > 0.7f) {
             centers = 2;
          }
-         else if (densitySnapshots[(int)top.x, (int)top.y] > 0.9f) {
-            centers = 2;
-         }
-         else if (densitySnapshots[(int)top.x, (int)top.y] > 0.52f) {
+         else if (densitySnapshots[(int)top.x, (int)top.y] > 0.2f) {
             centers = 1;
          }
 
@@ -91,9 +109,10 @@ public class Region {
             //center += rand.NextVector2(0, 10);
 
             densityCenters.Add((center, densitySnapshots[chunk.x, chunk.y]));
-         }         
+         }
 
-         state = RegionState.EXECUTED;
+         //state = RegionState.EXECUTED;
+         highwayCentersGenerated = true;
       }
    }
 

@@ -51,6 +51,8 @@ public class Chunk {
       waterList = new ArrayList();
       patchWaterDistanceMap = new float[(int)bounds.dim*5, (int)bounds.dim*5];
       patchBounds = new Bounds(bounds.dim * 5, bounds.xMin - bounds.dim*2, bounds.zMin - bounds.dim*2);
+
+      //Debug.Log(Mathf.PerlinNoise(100 * .003f + 30000, 100 * .003f + 30000) + " " + Mathf.PerlinNoise(101 * .003f + 30000, 100 * .003f + 30000));
    }
 
    // Loads cheap snapshot of chunk
@@ -152,16 +154,7 @@ public class Chunk {
          for (int z = (int)bounds.zMin; z < bounds.zMax + 1; z++) {
             Vector2Int globalPoint = new Vector2Int(x, z);
             Vector2Int localPoint = GetLocalCoord(globalPoint);
-            /*
-            float density = 0.3f + 0.2f*Mathf.PerlinNoise(x * .03f + 500000, z * .03f + 500000)
-                           + 0.8f*Mathf.PerlinNoise(x * .015f + 500000, z * .015f + 500000);
-            density = nearbyWater(density, localPoint, globalPoint);
-            density = mountainPenalty(density, localPoint);
-            density = distancePenalty(density, globalPoint);
 
-            if (density > 1) {
-               density = 1;
-            }*/
             float density = CalculateDensityAt(x, z);
 
             if (terrainHeightMap[localPoint.x, localPoint.y] > 0) {
@@ -177,12 +170,13 @@ public class Chunk {
    float CalculateDensityAt(int x, int z) {
       Vector2Int globalPoint = new Vector2Int(x, z);
       Vector2Int localPoint = GetLocalCoord(globalPoint);
-
-      float density = 0.3f + 0.2f * Mathf.PerlinNoise(x * .03f + 500000, z * .03f + 500000)
-                     + 0.8f * Mathf.PerlinNoise(x * .015f + 500000, z * .015f + 500000);
+      
+      float density = 0.3f + 0.2f * Mathf.PerlinNoise(x * .02f + 500000, z * .03f + 500000)
+                     + 0.8f * Mathf.PerlinNoise(x * .01f + 500000, z * .015f + 500000);
       /*if (state >= ChunkState.PRELOADED) 
          density = nearbyWater(density, localPoint, globalPoint);*/
       density = mountainPenalty(density, localPoint);
+      density = wildernessNoisePenalty(density, globalPoint);
       density = distancePenalty(density, globalPoint);
 
       if (density > 1) {
@@ -212,12 +206,29 @@ public class Chunk {
    }
 
    float distancePenalty(float d, Vector2Int p) {
-      if (p.magnitude > 300) {
-         d /= ((300 - 100) / 150) + 1;
+      if (p.magnitude > 500) {
+         d /= ((500 - 300) / 200) + 1;
       }
-      else if (p.magnitude > 100) {
-         d /= ((p.magnitude - 100) / 150) + 1;
+      else if (p.magnitude > 300) {
+         d /= ((p.magnitude - 300) / 200) + 1; // d /= ((p.magnitude - 300) / 200) + 1;
       }
+
+      return d;
+   }
+
+   float wildernessNoisePenalty(float d, Vector2Int gp) {
+      float mask = Mathf.PerlinNoise(gp.x * .003f + 30000, gp.y * .003f + 30000);
+      mask *= 2.2f;
+      if (mask > 1f) {
+         mask = 1f;
+      }
+
+      if (gp.magnitude < 400) {
+         float rem = 1f - mask;
+         mask += (1-(gp.magnitude/400)) * rem;
+      }
+
+      d *= mask;
 
       return d;
    }
@@ -232,15 +243,6 @@ public class Chunk {
       
       state = ChunkState.PRELOADED;
    }
-
-   /*float GenerateTerrainAt(int x, int z) {
-      float y = Mathf.PerlinNoise(x * .030f + 15000, z * .030f + 15000) * 10f - 5f
-                     + Mathf.PerlinNoise(x * .030f + 10000, z * .030f + 10000) * 10f - 5f
-                     + Mathf.PerlinNoise(x * .004f + 10000, z * .004f + 10000) * 25f - 5f
-                     + 4.5f;
-      y = Mathf.Pow(0.12f * y, 3) + 0.2f * y;
-      return y;
-   }*/
 
    void PrepareWaterList() {
       for (int x = (int)bounds.xMin; x < bounds.xMax; x += 2) {

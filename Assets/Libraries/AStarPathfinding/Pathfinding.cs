@@ -28,6 +28,7 @@ public class Pathfinding {
    private Dictionary<Vector2, PathNode> nodeDict;
    private int increment = 11;
    private int searchExtention = 100; // amount to search beyond min/max
+   private float waterCost = 100f;
    private Vector2Int min;
    private Vector2Int max;
 
@@ -134,7 +135,7 @@ public class Pathfinding {
 
    private float WaterCost(PathNode a) {
       if (a.isWater) {
-         return 600f;
+         return waterCost;
       }
       return 0;
    }

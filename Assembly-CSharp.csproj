@@ -108,6 +108,7 @@
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanResult.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Winding.cs" />
+    <Compile Include="Assets\Scripts\Util.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\VoronoiFactory.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Data\BadTriQueue.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\GenericMesher.cs" />
@@ -192,7 +193,8 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
-    <Compile Include="Assets\Scripts\Util.cs" />
+    <Compile Include="Assets\Scripts\ArterialGenerator.cs" />
+    <Compile Include="Assets\Scripts\Hp.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />

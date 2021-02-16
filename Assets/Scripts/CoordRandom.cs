@@ -20,7 +20,7 @@ public class CoordRandom {
    }
 
    public Vector2 NextVector2(int low, int high) {
-      return new Vector2(Next(low, high + 1), Next(low, high + 1));
+      return new Vector2(Next(low, high), Next(low, high));
    }
 
    /*public int GetInt(int x, int y, int low, int high) {

@@ -2,6 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+using TriangleNet.Geometry;
+using TriangleNet.Meshing;
+using TriangleNet.Meshing.Algorithm;
+using TriangleNet.Tools;
+
 public static class Util {
 
    // World coordinate to Region index
@@ -53,5 +58,26 @@ public static class Util {
 
    public static Vector2Int VecToVecInt(Vector2 v) {
       return new Vector2Int((int)v.x, (int)v.y);
+   }
+
+
+
+   // Delaunay utils
+   
+
+   public static bool IsSameVertex(Vertex v0, Vertex v1) {
+      return v0.X == v1.X && v0.Y == v1.Y;
+   }
+
+   public static float VertexDistance(Vertex v0, Vertex v1) {
+      return (new Vector2((float)v0.X, (float)v0.Y) - new Vector2((float)v1.X, (float)v1.Y)).magnitude;
+   }
+
+   public static Vector2 VertexToVector2(Vertex vert) {
+      return new Vector2((float)vert.X, (float)vert.Y);
+   }
+
+   public static Vector2Int VertexToVector2Int(Vertex vert) {
+      return new Vector2Int((int)vert.X, (int)vert.Y);
    }
 }
