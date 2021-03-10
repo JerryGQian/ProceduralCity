@@ -4,27 +4,27 @@ using UnityEngine;
 
 public class WorldManager : MonoBehaviour {
 
+   public static int dim = 500; // deprecated
+   public static int dimArea = dim * dim;
+
+   public static int loadRadius = 5; //
+   public static int chunkSize = 10; // units in length per chunk
+   public static int regionDim = 24; // chunks in length per region, must be odd
+
    public WorldBuilder wb;
    public GameObject chunkMeshesParent;
-   public static int dim = 500;
-   public static int dimArea = dim * dim;
    public static float[,] landValueMap = new float[dim, dim];
    public static float[,] terrainHeightMap = new float[dim, dim];
    public static float[,] waterDistanceMap = new float[dim, dim];
    public static float[] waterDistanceArr = new float[dimArea];
    public static Dictionary<(Vector2, Vector2), bool> edgeState = new Dictionary<(Vector2, Vector2), bool>();
 
-   //public static Random randomSequence = new Random(12345);
-   //int randomNumber1 = randomSequence.Next();
-
    public static float waterDistanceLimit = 10;
 
-   public static int loadRadius = 20;
-   public static int chunkSize = 10;
+
    public static Dictionary<Vector2Int, Chunk> chunks = new Dictionary<Vector2Int, Chunk>();
    public static Dictionary<Vector2Int, GameObject> chunkMeshes = new Dictionary<Vector2Int, GameObject>();
 
-   public static int regionDim = 25; // num of chunks in length, must be odd
    public static Dictionary<Vector2Int, Region> regions = new Dictionary<Vector2Int, Region>();
 
 
@@ -66,18 +66,42 @@ public class WorldManager : MonoBehaviour {
       Vector2Int idx = W2C(pos3);
 
       // Snapshot Region and build highways
-      StartCoroutine(GenRegionPatch(idx));
+      //yield return StartCoroutine(GenRegionPatch(idx));
+      GenRegionPatch(idx);
 
+      // Build list of chunk patch indices
       ArrayList idxToProcess = new ArrayList();
       foreach (Vector2Int v in GetPatchIdx(idx)) {
          idxToProcess.Add(v);
       }
-      int i = 0;
+
+      // Preload Chunks
       foreach (Vector2Int v in idxToProcess) {
+         // Preload Chunk
+         for (int i = -1; i <= 1; i++) {
+            for (int j = -1; j <= 1; j++) {
+               PreloadChunk(v + new Vector2Int(i, j));
+            }
+         }
+      }
+
+      // Gen Arterial Paths in patch
+      List<Bounds> boundsList = new List<Bounds>();
+      foreach (Vector2Int v in idxToProcess) {
+         // Find all edges in chunk patch
+         boundsList.Add(WorldManager.chunks[v].bounds); // TODO need to gen Chunk before doing this!
+      }
+      Bounds patchBound = Bounds.Merge(boundsList);
+      //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);
+
+      // Gen Chunks
+      int c = 0;
+      foreach (Vector2Int v in idxToProcess) {
+         //Debug.Log("LLL Chunk loading: " + i);
          // Preloads patch & Loads center
          GenChunkAtIdx(v);
-         i++;
-         if (i % 8 == 0) {
+         c++;
+         if (c % 8 == 0) {
             yield return null;
          }
       }
@@ -86,12 +110,12 @@ public class WorldManager : MonoBehaviour {
    // Preloads 3x3 patch, Loads center
    //IEnumerator GenChunkAtIdx(Vector2Int idx) {
    private void GenChunkAtIdx(Vector2Int idx) {
-      // Preload Chunk
+      /*// Preload Chunk
       for (int i = -1; i <= 1; i++) {
          for (int j = -1; j <= 1; j++) {
             PreloadChunk(idx + new Vector2Int(i, j));
          }
-      }
+      }*/
       LoadChunk(idx);
       RenderChunk(idx);
       //yield return null;
@@ -99,13 +123,13 @@ public class WorldManager : MonoBehaviour {
 
    // Snapshots /////////////////////////////////////////////////////////////////////
    //    peeks into each chunk and calculates center coordinate instead of entire chunk
-   IEnumerator GenRegionPatch(Vector2Int chunkIdx) {
+   public void GenRegionPatch(Vector2Int chunkIdx) {
       Vector2 world = C2W(chunkIdx);
       Vector2Int regionIdx = W2R(new Vector2Int((int)world.x, (int)world.y));
       ArrayList patchDensityCenters = new ArrayList();
       Dictionary<Vector2Int, float> patchDensitySnapshotsMap = new Dictionary<Vector2Int, float>();
-      for (int i = -2; i <= 2; i++) {
-         for (int j = -2; j <= 2; j++) {
+      for (int i = -3; i <= 3; i++) {
+         for (int j = -3; j <= 3; j++) {
             Region region;
             Vector2Int thisIdx = regionIdx + new Vector2Int(i, j);
             if (regions.ContainsKey(thisIdx)) {
@@ -141,7 +165,8 @@ public class WorldManager : MonoBehaviour {
       if (!regions[regionIdx].highwayPatchExecuted) {
          regions[regionIdx].highwayPatchExecuted = true;
          // Gen highway and wait till done
-         yield return StartCoroutine(GenBuildHighway(patchDensityCenters, regionIdx));
+         //yield return StartCoroutine(GenBuildHighway(patchDensityCenters, regionIdx));
+         GenBuildHighway(patchDensityCenters, regionIdx);
 
          // Prep arterial
          if (!regions[regionIdx].arterialLayoutGenerated) {
@@ -149,13 +174,9 @@ public class WorldManager : MonoBehaviour {
             StartCoroutine(GenBuildArterial(patchDensitySnapshotsMap, regionIdx));
          }
       }
-
-      // Prep arterial roads up until pathfinding
-      //if not gened
-      //PrepareArterialLayout(regionIdx);
    }
 
-   IEnumerator GenBuildHighway(ArrayList patchDensityCenters, Vector2Int regionIdx) {
+   /*IEnumerator GenBuildHighway(ArrayList patchDensityCenters, Vector2Int regionIdx) {
       Region region = regions[regionIdx];
       region.hwg = new HighwayGenerator(patchDensityCenters, regionIdx);
       //HighwayGenerator highwayGen = new HighwayGenerator(patchDensityCenters, regionIdx);
@@ -163,6 +184,12 @@ public class WorldManager : MonoBehaviour {
       yield return StartCoroutine(genHighwayCoroutine);
       wb.BuildHighway(region.hwg, regionIdx);
       yield return null;
+   }*/
+   private void GenBuildHighway(ArrayList patchDensityCenters, Vector2Int regionIdx) {
+      Region region = regions[regionIdx];
+      region.hwg = new HighwayGenerator(patchDensityCenters, regionIdx);
+      region.hwg.GenHighwayCoroutine();
+      wb.BuildHighway(region.hwg, regionIdx);
    }
 
    IEnumerator GenBuildArterial(Dictionary<Vector2Int, float> patchDensitySnapshotsMap, Vector2Int regionIdx) {
@@ -247,7 +274,6 @@ public class WorldManager : MonoBehaviour {
          ChunkMeshRenderer renderer = chunkMesh.GetComponent<ChunkMeshRenderer>();
          renderer.BuildMesh(chunks[idx]);
          chunkMeshes[idx] = chunkMesh;
-         //Debug.Log("Rendered: " + idx + " " + chunkMeshes.Count);
       }
    }
 

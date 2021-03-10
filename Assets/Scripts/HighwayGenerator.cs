@@ -36,11 +36,11 @@ public class HighwayGenerator {
       this.regionIdx = regionIdx;
    }
 
-   public IEnumerator GenHighway() {
+   /*public IEnumerator GenHighway() {
       return GenHighwayCoroutine();
-   }
+   }*/
 
-   IEnumerator GenHighwayCoroutine() {
+   public void GenHighwayCoroutine() {
       Dictionary<Vector2, float> densityLookup = new Dictionary<Vector2, float>();
 
       // cluster nearby points with DBScan
@@ -71,7 +71,6 @@ public class HighwayGenerator {
          vertices.Add(v);
       }
       foreach (Edge e in mesh.Edges) {
-         //Debug.Log(e.P0 + " " + e.P1);
          edges.Add(e);
 
          // build neighbor map
@@ -87,7 +86,6 @@ public class HighwayGenerator {
       foreach (Edge e in mesh.Edges) {
          Vertex v0 = (Vertex)vertices[e.P0];
          Vertex v1 = (Vertex)vertices[e.P1];
-         //Debug.Log(e.P0 + " " + e.P1);
          (Vector2, Vector2) tup1 = (Util.VertexToVector2(v0), Util.VertexToVector2(v1));
          (Vector2, Vector2) tup2 = (Util.VertexToVector2(v1), Util.VertexToVector2(v0));
 
@@ -122,6 +120,13 @@ public class HighwayGenerator {
          (Vector2Int, Vector2Int) eVec = (Util.VertexToVector2Int((Vertex)vertices[e.P0]), Util.VertexToVector2Int((Vertex)vertices[e.P1]));
          Vertex v0 = (Vertex)vertices[e.P0];
          Vertex v1 = (Vertex)vertices[e.P1];
+
+         // Skip pathfinding for edges that have been generated/built already
+         if (WorldBuilder.builtHighways.ContainsKey((Util.VertexToVector2(v0), Util.VertexToVector2(v0))) &&
+            WorldBuilder.builtHighways[(Util.VertexToVector2(v0), Util.VertexToVector2(v0))]) {
+            //Debug.Log("Aborting pathfind since already built!");
+            continue;
+         }
 
          // A* pathfind from v0 to v1
          ArrayList segments = pathfinding.FindPath(Util.VertexToVector2(v0), Util.VertexToVector2(v1));
@@ -234,7 +239,7 @@ public class HighwayGenerator {
          //Debug.Log(segments.Count);
 
          if (segments != null) highways.Add(segments);
-         yield return null;
+         //yield return null;
       }
    }
 
@@ -288,8 +293,8 @@ public class HighwayGenerator {
    }
 
    public static bool InPatchBounds(Vector2Int regionIdx, Vector2 P0, Vector2 P1) {
-      for (int i = -1; i <= 1; i++) {
-         for (int j = -1; j <= 1; j++) {
+      for (int i = -2; i <= 2; i++) {
+         for (int j = -2; j <= 2; j++) {
             if (WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P0) || WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P1)) {
                return true;
             }

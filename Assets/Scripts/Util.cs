@@ -9,6 +9,16 @@ using TriangleNet.Tools;
 
 public static class Util {
 
+   private static Vector2 angleBase = new Vector2(1, 0);
+
+   public static string List2String(ArrayList list) {
+      string s = "";
+      for (int i = 0; i < list.Count; i++) {
+         s += list[i] + ", ";
+      }
+      return s;
+   }
+
    // World coordinate to Region index
    public static Vector2Int W2R(Vector2 worldCoord) {
       int regionSize = WorldManager.regionDim * WorldManager.chunkSize;
@@ -71,6 +81,17 @@ public static class Util {
 
    public static float VertexDistance(Vertex v0, Vertex v1) {
       return (new Vector2((float)v0.X, (float)v0.Y) - new Vector2((float)v1.X, (float)v1.Y)).magnitude;
+   }
+
+   public static float VertexAngle(Vertex v0, Vertex v1) {
+      Vector2 vec0 = new Vector2((float)v0.X, (float)v0.Y);
+      Vector2 vec1 = new Vector2((float)v1.X, (float)v1.Y);
+
+      return Vector2.Angle(vec0, vec1);
+   }
+
+   public static Vertex Vector2ToVertex(Vector2 vec) {
+      return new Vertex(vec.x, vec.y);
    }
 
    public static Vector2 VertexToVector2(Vertex vert) {

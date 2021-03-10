@@ -107,6 +107,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\ConstraintMesher.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanResult.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />
+    <Compile Include="Assets\Scripts\Hp.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Winding.cs" />
     <Compile Include="Assets\Scripts\Util.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\VoronoiFactory.cs" />
@@ -158,6 +159,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\IMesh.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\Eventing\IDbscanEventSubscriber.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\PolygonValidator.cs" />
+    <Compile Include="Assets\Scripts\ArterialGenerator.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\FileProcessor.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\Legacy\VoronoiRegion.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\Eventing\Events.cs" />
@@ -193,8 +195,8 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
-    <Compile Include="Assets\Scripts\ArterialGenerator.cs" />
-    <Compile Include="Assets\Scripts\Hp.cs" />
+    <Compile Include="Assets\Scripts\PriorityQueue.cs" />
+    <Compile Include="Assets\Scripts\Bounds.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />

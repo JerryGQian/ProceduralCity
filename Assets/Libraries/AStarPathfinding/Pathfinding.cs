@@ -27,7 +27,7 @@ public class Pathfinding {
    private List<PathNode> closedList;
    private Dictionary<Vector2, PathNode> nodeDict;
    private int increment = 11;
-   private int searchExtention = 100; // amount to search beyond min/max
+   private int searchExtention = 80; // amount to search beyond min/max
    private float waterCost = 100f;
    private Vector2Int min;
    private Vector2Int max;

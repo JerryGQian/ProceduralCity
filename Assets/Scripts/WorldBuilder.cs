@@ -25,7 +25,31 @@ public class WorldBuilder : MonoBehaviour {
       foreach (Vertex v in hwg.vertices) {
          vert.Add(v);
       }
-      
+
+      //visualize regions
+      Region region = WorldManager.regions[regionIdx];
+      Bounds regionBounds = region.bounds;
+      GameObject boundMarker = Instantiate(purpleCube, new Vector3(regionBounds.xMin, 20, regionBounds.zMin), Quaternion.AngleAxis(0, Vector3.up));
+      boundMarker.name = "BoundMarker " + regionIdx;
+      Transform bmtrans = boundMarker.GetComponent<Transform>();
+      bmtrans.localScale = new Vector3(20, 10, 20);
+
+      boundMarker = Instantiate(purpleCube, new Vector3(regionBounds.xMin, 20, regionBounds.zMax), Quaternion.AngleAxis(0, Vector3.up));
+      boundMarker.name = "BoundMarker " + regionIdx;
+      bmtrans = boundMarker.GetComponent<Transform>();
+      bmtrans.localScale = new Vector3(20, 10, 20);
+
+      boundMarker = Instantiate(purpleCube, new Vector3(regionBounds.xMax, 20, regionBounds.zMax), Quaternion.AngleAxis(0, Vector3.up));
+      boundMarker.name = "BoundMarker " + regionIdx;
+      bmtrans = boundMarker.GetComponent<Transform>();
+      bmtrans.localScale = new Vector3(20, 10, 20);
+
+      boundMarker = Instantiate(purpleCube, new Vector3(regionBounds.xMax, 20, regionBounds.zMin), Quaternion.AngleAxis(0, Vector3.up));
+      boundMarker.name = "BoundMarker " + regionIdx;
+      bmtrans = boundMarker.GetComponent<Transform>();
+      bmtrans.localScale = new Vector3(20, 10, 20);
+
+
 
       if (false) {
          foreach (Edge e in hwg.edges) {
@@ -127,7 +151,7 @@ public class WorldBuilder : MonoBehaviour {
          }
       }
 
-      foreach (Vector2 point in atg.arterialPoints) {
+      foreach (Vector2 point in atg.initialArterialPoints) {
          GameObject obj = Instantiate(yellowCube, new Vector3(point.x, 20, point.y), Quaternion.identity);
          obj.name = "InitialArterialPoint " + point;
          Transform trans = obj.GetComponent<Transform>();
