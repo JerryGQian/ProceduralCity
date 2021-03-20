@@ -31,7 +31,6 @@ public class PriorityQueue<T> {
    public T PeekFromMax(int idx) {
       int realIdx = queue.Count - idx - 1;
       if (realIdx < 0 || queue.Count < realIdx + 1) {
-         Debug.Log("usePQ " + queue.Count + " " + realIdx);
          return default(T);
       }
       return (T)queue[realIdx];

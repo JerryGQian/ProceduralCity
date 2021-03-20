@@ -27,6 +27,9 @@ public class WorldManager : MonoBehaviour {
 
    public static Dictionary<Vector2Int, Region> regions = new Dictionary<Vector2Int, Region>();
 
+   // store generated arterial paths to avoid redundant generation
+   public static Dictionary<Vector2Int, List<Vector2>> arterialPaths = new Dictionary<Vector2Int, List<Vector2>>();
+
 
    public GameObject ChunkMeshPrefab;
    public GameObject indicator; // for visualization
@@ -86,13 +89,14 @@ public class WorldManager : MonoBehaviour {
       }
 
       // Gen Arterial Paths in patch
-      List<Bounds> boundsList = new List<Bounds>();
+      GenChunkPatchArterialPaths(idxToProcess);
+      /*List<Bounds> boundsList = new List<Bounds>();
       foreach (Vector2Int v in idxToProcess) {
          // Find all edges in chunk patch
          boundsList.Add(WorldManager.chunks[v].bounds); // TODO need to gen Chunk before doing this!
       }
       Bounds patchBound = Bounds.Merge(boundsList);
-      //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);
+      //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);*/
 
       // Gen Chunks
       int c = 0;
@@ -192,14 +196,57 @@ public class WorldManager : MonoBehaviour {
       wb.BuildHighway(region.hwg, regionIdx);
    }
 
+   // DOES NOT BUILD ART PATHS, ONLY GEN LAYOUT
    IEnumerator GenBuildArterial(Dictionary<Vector2Int, float> patchDensitySnapshotsMap, Vector2Int regionIdx) {
       Region region = regions[regionIdx];
       region.atg = new ArterialGenerator(patchDensitySnapshotsMap, region.bounds, regionIdx);
       //IEnumerator genArterialCoroutine = region.atg.GenArterialLayout();
       region.atg.GenArterialLayout();
       //yield return StartCoroutine(genHighwayCoroutine);
-      wb.BuildArterial(region.atg, regionIdx);
+      //wb.BuildArterialLayout(region.atg, regionIdx);
       yield return null;
+   }
+
+   // Generates final arterial road paths from existing edges that lie in patch
+   public void GenChunkPatchArterialPaths(ArrayList chunkPatch) {
+      List<Bounds> boundsList = new List<Bounds>();
+      foreach (Vector2Int v in chunkPatch) { //patch indices
+         // Gather all bounds in chunk patch
+         boundsList.Add(chunks[v].bounds);
+      }
+      Bounds patchBound = Bounds.Merge(boundsList);
+      //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);
+      Vector2Int regionIdx = Util.W2R(patchBound.GetCenter());
+      List<(Vector2, Vector2)> edges = new List<(Vector2, Vector2)>();
+      HashSet<(Vector2, Vector2)> edgesBidirectionalSet = new HashSet<(Vector2, Vector2)>();
+
+      // Find edges in chunk patch
+      /*for (int i = -1; i <= 1; i++) {
+         for (int j = -1; j <= 1; j++) {*/
+      Vector2Int thisRegionIdx = regionIdx;// + new Vector2Int(i, j);
+            if (regions.ContainsKey(thisRegionIdx)) {
+               ArterialGenerator atg = regions[thisRegionIdx].atg;
+               Debug.Log(thisRegionIdx + " " + regions[thisRegionIdx].atg);
+               foreach ((Vector2, Vector2) e in atg.arterialEdges) {
+                  if (!edgesBidirectionalSet.Contains(e) && (patchBound.InBounds(e.Item1) || patchBound.InBounds(e.Item2))) {
+                     edges.Add(e);
+                     // register with directional set
+                     edgesBidirectionalSet.Add(e);
+                     edgesBidirectionalSet.Add((e.Item2, e.Item1));
+                  }
+               }
+            }            
+         /*}
+      }*/
+
+      // Path find each edge
+      ArterialPathfinding pathfinding = new ArterialPathfinding();
+      foreach ((Vector2, Vector2) e in edges) {
+         // A* pathfind from v0 to v1
+         ArrayList segments = pathfinding.FindPath(e.Item1, e.Item2);
+         Debug.Log("pathfinding " + e + " " + segments.Count);
+         wb.BuildArterial(e, segments);
+      }
    }
 
    public (float[,], Dictionary<Vector2Int, float>) SnapshotRegion(Vector2Int regionIdx) {

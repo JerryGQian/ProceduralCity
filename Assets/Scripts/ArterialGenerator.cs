@@ -32,6 +32,7 @@ public class ArterialGenerator {
    private ArrayList tempEdges;
    public ArrayList edges;
    public ArrayList vertices;
+   public ArrayList arterialEdges = new ArrayList();
    private Dictionary<Vector2, ArrayList> regionToVertices = new Dictionary<Vector2, ArrayList>();
    public Dictionary<Vector2, List<Vector2>> neighbors;
    private Dictionary<(Vector2, Vector2), Edge> vertToEdge = new Dictionary<(Vector2, Vector2), Edge>();
@@ -354,7 +355,7 @@ public class ArterialGenerator {
             Vector2 idx = regionIdx + new Vector2(i, j);
             //Debug.Log("SPAWNING CHAINS at " + idx + " " + backboneEdgeCount[idx]);
             if (backboneEdgeCount[idx] == 0) {
-               Debug.Log("SPAWNING CHAINS at --- " + idx);
+               //Debug.Log("SPAWNING CHAINS at --- " + idx);
                SpawnBackboneChains(idx);
             }
          }
@@ -371,7 +372,7 @@ public class ArterialGenerator {
       ConnectLooseEnds(regionIdx + new Vector2Int(0, -1), false, true, false, false); // bot mid
       ConnectLooseEnds(regionIdx + new Vector2Int(1, -1), false, false, false, false); // bot right
 
-      // Remove non-backbone edges
+      // Remove non-backbone edges TODO remove this later when things transitioned to arterialEdges
       foreach (Edge e in mesh.Edges) {
          Vertex v0 = (Vertex)vertices[e.P0];
          Vertex v1 = (Vertex)vertices[e.P1];
@@ -381,10 +382,15 @@ public class ArterialGenerator {
             RemoveEdge(e);
          }
       }
+
+      foreach ((Vector2, Vector2) e in backboneEdges) {
+         arterialEdges.Add(e);
+      }
+      Debug.Log(arterialEdges.Count + " " + regionIdx);
    }
 
    private void SpawnBackboneChains(Vector2 idx) {
-      Debug.Log("SPAWNING CHAINS :" + regionToVertices[idx].Count);
+      //Debug.Log("SPAWNING CHAINS :" + regionToVertices[idx].Count);
       Vector2Int regionIdx = new Vector2Int((int)idx.x, (int)idx.y);
       if (regionToVertices[idx].Count >= 20) {
          EstablishChainBidirectional(regionIdx, (Vector2)(regionToVertices[idx][0]), new Vector2(0, 1), spawnAngleTolerance, spawnMaxLength);

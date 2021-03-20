@@ -197,6 +197,7 @@
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
     <Compile Include="Assets\Scripts\PriorityQueue.cs" />
     <Compile Include="Assets\Scripts\Bounds.cs" />
+    <Compile Include="Assets\Scripts\ArterialPathfinding.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />
