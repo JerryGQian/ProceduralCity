@@ -9,7 +9,7 @@ public class WorldManager : MonoBehaviour {
 
    public static int loadRadius = 5; //
    public static int chunkSize = 10; // units in length per chunk
-   public static int regionDim = 24; // chunks in length per region, must be odd
+   public static int regionDim = 32; // chunks in length per region, must be odd 24
 
    public WorldBuilder wb;
    public GameObject chunkMeshesParent;
@@ -29,7 +29,9 @@ public class WorldManager : MonoBehaviour {
 
    // store generated arterial paths to avoid redundant generation
    public static Dictionary<Vector2Int, List<Vector2>> arterialPaths = new Dictionary<Vector2Int, List<Vector2>>();
-
+   public static Dictionary<Vector2, HashSet<Vector2>> roadGraph = new Dictionary<Vector2, HashSet<Vector2>>();
+   public static HashSet<(Vector2, Vector2)> arterialEdgeSet = new HashSet<(Vector2, Vector2)>(); // to confirm if segments are arterial or not
+   public static Dictionary<string, Area> areas = new Dictionary<string, Area>();
 
    public GameObject ChunkMeshPrefab;
    public GameObject indicator; // for visualization
@@ -73,13 +75,18 @@ public class WorldManager : MonoBehaviour {
       GenRegionPatch(idx);
 
       // Build list of chunk patch indices
-      ArrayList idxToProcess = new ArrayList();
+      ArrayList idxToRender = new ArrayList();
       foreach (Vector2Int v in GetPatchIdx(idx)) {
-         idxToProcess.Add(v);
+         idxToRender.Add(v);
+      }
+      // Build larger chunk patch for locales
+      ArrayList idxToConsider = new ArrayList();
+      foreach (Vector2Int v in GetLargePatchChunks(idx, 5)) {
+         idxToConsider.Add(v);
       }
 
       // Preload Chunks
-      foreach (Vector2Int v in idxToProcess) {
+      foreach (Vector2Int v in idxToRender) {
          // Preload Chunk
          for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
@@ -88,19 +95,15 @@ public class WorldManager : MonoBehaviour {
          }
       }
 
+
+      // Find Areas, Gen Arterial Paths, Gen Local Roads
+      GenChunkPatchAreas(idxToRender);
       // Gen Arterial Paths in patch
-      GenChunkPatchArterialPaths(idxToProcess);
-      /*List<Bounds> boundsList = new List<Bounds>();
-      foreach (Vector2Int v in idxToProcess) {
-         // Find all edges in chunk patch
-         boundsList.Add(WorldManager.chunks[v].bounds); // TODO need to gen Chunk before doing this!
-      }
-      Bounds patchBound = Bounds.Merge(boundsList);
-      //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);*/
+      GenChunkPatchArterialPaths(idxToRender, idxToConsider);
 
       // Gen Chunks
       int c = 0;
-      foreach (Vector2Int v in idxToProcess) {
+      foreach (Vector2Int v in idxToRender) {
          //Debug.Log("LLL Chunk loading: " + i);
          // Preloads patch & Loads center
          GenChunkAtIdx(v);
@@ -109,6 +112,34 @@ public class WorldManager : MonoBehaviour {
             yield return null;
          }
       }
+   }
+
+   // Adds road to road graph
+   public static void AddToRoadGraph(Vector2 v1, Vector2 v2) {
+      //Debug.Log("AddToRoadGraph " + v1 + " " + v2);
+      
+      if (!roadGraph.ContainsKey(v1)) {
+         roadGraph[v1] = new HashSet<Vector2>();
+      }
+      if (!roadGraph.ContainsKey(v2)) {
+         roadGraph[v2] = new HashSet<Vector2>();
+      }
+
+      if (!roadGraph[v1].Contains(v2)) {
+         roadGraph[v1].Add(v2);
+      }
+      if (!roadGraph[v2].Contains(v1)) {
+         roadGraph[v2].Add(v1);
+      }
+
+   }
+   // Adds edge to hash set
+   public static void AddToArterialEdgeSet(Vector2 v1, Vector2 v2) {
+      (Vector2, Vector2) tup1 = (v1, v2);
+      (Vector2, Vector2) tup2 = (v2, v1);
+
+      arterialEdgeSet.Add(tup1);
+      arterialEdgeSet.Add(tup2);
    }
 
    // Preloads 3x3 patch, Loads center
@@ -169,8 +200,8 @@ public class WorldManager : MonoBehaviour {
       if (!regions[regionIdx].highwayPatchExecuted) {
          regions[regionIdx].highwayPatchExecuted = true;
          // Gen highway and wait till done
-         //yield return StartCoroutine(GenBuildHighway(patchDensityCenters, regionIdx));
          GenBuildHighway(patchDensityCenters, regionIdx);
+         //yield return StartCoroutine(GenBuildHighway(patchDensityCenters, regionIdx));
 
          // Prep arterial
          if (!regions[regionIdx].arterialLayoutGenerated) {
@@ -207,8 +238,8 @@ public class WorldManager : MonoBehaviour {
       yield return null;
    }
 
-   // Generates final arterial road paths from existing edges that lie in patch
-   public void GenChunkPatchArterialPaths(ArrayList chunkPatch) {
+   // Find current areas, gen arterial paths of those areas, gen local roads for each area
+   public void GenChunkPatchAreas(ArrayList chunkPatch) {
       List<Bounds> boundsList = new List<Bounds>();
       foreach (Vector2Int v in chunkPatch) { //patch indices
          // Gather all bounds in chunk patch
@@ -217,36 +248,92 @@ public class WorldManager : MonoBehaviour {
       Bounds patchBound = Bounds.Merge(boundsList);
       //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);
       Vector2Int regionIdx = Util.W2R(patchBound.GetCenter());
-      List<(Vector2, Vector2)> edges = new List<(Vector2, Vector2)>();
+      HashSet<Vector2> sourceVerts = new HashSet<Vector2>();
+      List<(Vector2, Vector2)> edges = new List<(Vector2, Vector2)>(); // edges to build
       HashSet<(Vector2, Vector2)> edgesBidirectionalSet = new HashSet<(Vector2, Vector2)>();
 
-      // Find edges in chunk patch
-      /*for (int i = -1; i <= 1; i++) {
-         for (int j = -1; j <= 1; j++) {*/
-      Vector2Int thisRegionIdx = regionIdx;// + new Vector2Int(i, j);
-            if (regions.ContainsKey(thisRegionIdx)) {
-               ArterialGenerator atg = regions[thisRegionIdx].atg;
-               Debug.Log(thisRegionIdx + " " + regions[thisRegionIdx].atg);
-               foreach ((Vector2, Vector2) e in atg.arterialEdges) {
-                  if (!edgesBidirectionalSet.Contains(e) && (patchBound.InBounds(e.Item1) || patchBound.InBounds(e.Item2))) {
-                     edges.Add(e);
-                     // register with directional set
-                     edgesBidirectionalSet.Add(e);
-                     edgesBidirectionalSet.Add((e.Item2, e.Item1));
-                  }
+      Vector2Int thisRegionIdx = regionIdx;
+      if (regions.ContainsKey(thisRegionIdx)) {
+         ArterialGenerator atg = regions[thisRegionIdx].atg;
+         //Debug.Log(thisRegionIdx + " " + regions[thisRegionIdx].atg);
+         foreach ((Vector2, Vector2) e in atg.arterialEdges) {
+            if (!edgesBidirectionalSet.Contains(e) && (patchBound.InBounds(e.Item1) || patchBound.InBounds(e.Item2))) {
+               if (patchBound.InBounds(e.Item1)) {
+                  sourceVerts.Add(e.Item1);
                }
-            }            
-         /*}
-      }*/
+               if (patchBound.InBounds(e.Item2)) {
+                  sourceVerts.Add(e.Item2);
+               }
+               //edges.Add(e);
+
+               // register with bidirectional set
+               edgesBidirectionalSet.Add(e);
+               edgesBidirectionalSet.Add((e.Item2, e.Item1));
+            }
+         }
+      }
+
+      // Find all areas using vertices as seed
+      List<Vector2> sourceVertList = new List<Vector2>();
+      foreach (Vector2 v in sourceVerts) {
+         sourceVertList.Add(v);
+      }
+
+      List<Area> currAreas = AreaFinder.FindAreas(sourceVertList);
+      foreach (Area a in currAreas) {
+         //Debug.Log("Name: " + a.ToString());
+         string areaName = a.ToString();
+         if (!areas.ContainsKey(areaName)) {
+            //Debug.Log("Gening: " + areaName);
+            areas[areaName] = a;
+            a.GenArea();
+            foreach (KeyValuePair<(Vector2, Vector2), ArrayList> e in a.arterialSegments) {
+               wb.BuildArterial(e.Key, e.Value);
+            }
+            wb.BuildAreaSeeds(a.seeds);
+         }
+         
+      }
+      //Debug.Log("AreasFound: " + areas.Count);
+   }
+
+
+   // Generates final arterial road paths from existing edges that lie in patch
+   public void GenChunkPatchArterialPaths(ArrayList chunkPatch, ArrayList largeChunkPatch) {
+      List<Bounds> boundsList = new List<Bounds>();
+      foreach (Vector2Int v in chunkPatch) { //patch indices
+         // Gather all bounds in chunk patch
+         boundsList.Add(chunks[v].bounds);
+      }
+      Bounds patchBound = Bounds.Merge(boundsList);
+      //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);
+      Vector2Int regionIdx = Util.W2R(patchBound.GetCenter());
+      List<(Vector2, Vector2)> edges = new List<(Vector2, Vector2)>(); // edges to build
+      HashSet<(Vector2, Vector2)> edgesBidirectionalSet = new HashSet<(Vector2, Vector2)>();
+
+
+      Vector2Int thisRegionIdx = regionIdx;
+      if (regions.ContainsKey(thisRegionIdx)) {
+         ArterialGenerator atg = regions[thisRegionIdx].atg;
+         //Debug.Log(thisRegionIdx + " " + regions[thisRegionIdx].atg);
+         foreach ((Vector2, Vector2) e in atg.arterialEdges) {
+            if (!edgesBidirectionalSet.Contains(e) && (patchBound.InBounds(e.Item1) || patchBound.InBounds(e.Item2))) {
+               edges.Add(e);
+               // register with directional set
+               edgesBidirectionalSet.Add(e);
+               edgesBidirectionalSet.Add((e.Item2, e.Item1));
+            }
+         }
+      }
 
       // Path find each edge
       ArterialPathfinding pathfinding = new ArterialPathfinding();
-      foreach ((Vector2, Vector2) e in edges) {
+      /*foreach ((Vector2, Vector2) e in edges) {
          // A* pathfind from v0 to v1
          ArrayList segments = pathfinding.FindPath(e.Item1, e.Item2);
-         Debug.Log("pathfinding " + e + " " + segments.Count);
-         wb.BuildArterial(e, segments);
-      }
+         //Debug.Log("pathfinding " + e + " " + segments.Count);
+         //wb.BuildArterial(e, segments);
+      }*/
    }
 
    public (float[,], Dictionary<Vector2Int, float>) SnapshotRegion(Vector2Int regionIdx) {
@@ -334,11 +421,11 @@ public class WorldManager : MonoBehaviour {
       }
       return patchChunks;
    }
-   public ArrayList GetLargePatchChunks(Vector2Int idx) {
+   public ArrayList GetLargePatchChunks(Vector2Int idx, int size) {
       ArrayList patchChunks = new ArrayList();
-      for (int i = -2; i <= 2; i++) {
-         for (int j = -2; j <= 2; j++) {
-            patchChunks.Add(chunks[idx + new Vector2Int(i, j)]);
+      for (int i = -loadRadius - size; i <= loadRadius + size; i++) {
+         for (int j = -loadRadius - size; j <= loadRadius + size; j++) {
+            patchChunks.Add(idx + new Vector2Int(i, j));
 
          }
       }

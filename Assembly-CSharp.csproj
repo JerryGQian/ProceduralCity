@@ -104,6 +104,7 @@
     <Compile Include="Assets\Libraries\AStarPathfinding\MeshUtils.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Triangle.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\DcelMesh.cs" />
+    <Compile Include="Assets\Scripts\PriorityQueue.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\ConstraintMesher.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanResult.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />
@@ -146,6 +147,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\Interpolation.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\ExtensionMethods.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Halfedge.cs" />
+    <Compile Include="Assets\Scripts\ArterialPathfinding.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\Eventing\EmptyDbscanEventPublisher.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanAlgorithm.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Rectangle.cs" />
@@ -157,6 +159,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\Legacy\SimpleVoronoi.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Logging\ILog.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\IMesh.cs" />
+    <Compile Include="Assets\Scripts\Bounds.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\Eventing\IDbscanEventSubscriber.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\PolygonValidator.cs" />
     <Compile Include="Assets\Scripts\ArterialGenerator.cs" />
@@ -195,9 +198,9 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
-    <Compile Include="Assets\Scripts\PriorityQueue.cs" />
-    <Compile Include="Assets\Scripts\Bounds.cs" />
-    <Compile Include="Assets\Scripts\ArterialPathfinding.cs" />
+    <Compile Include="Assets\Scripts\AreaFinder.cs" />
+    <Compile Include="Assets\Scripts\LocalGenerator.cs" />
+    <Compile Include="Assets\Scripts\Area.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />

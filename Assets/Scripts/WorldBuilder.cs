@@ -10,6 +10,7 @@ public class WorldBuilder : MonoBehaviour {
    public GameObject indicator; // for visualization
    public GameObject yellowCube;
    public GameObject purpleCube;
+   public GameObject blueCube;
    public static Dictionary<(Vector2, Vector2), bool> builtHighways = new Dictionary<(Vector2, Vector2), bool>();
    public static HashSet<(Vector2, Vector2)> builtArterial = new HashSet<(Vector2, Vector2)>();
    public static Vector2 SignalVector = new Vector2(999999, 999999); // Unique vector that signals something, eg a jump in highways
@@ -101,6 +102,10 @@ public class WorldBuilder : MonoBehaviour {
                      continue;
                   }
 
+                  // Add segment to road graph in WorldManager
+                  WorldManager.AddToRoadGraph(P0, P1);
+
+
                   Vector2 topDownVec = new Vector2(P1.x - P0.x, P1.y - P0.y);
                   // 3D version of points with terrain height
                   Vector3 P0_3 = new Vector3(P0.x, TerrainGen.GenerateTerrainAt((int)P0.x, (int)P0.y), P0.y);
@@ -108,11 +113,8 @@ public class WorldBuilder : MonoBehaviour {
                   float dist = (P0_3 - P1_3).magnitude;
                   float incline = Mathf.Atan2(topDownVec.magnitude, P0_3.y - P1_3.y) * Mathf.Rad2Deg + 90;
 
-
-
                   float x = (float)(P0.x + P1.x) / 2;
                   float y = (float)(P0.y + P1.y) / 2;
-
 
                   float angle = Mathf.Atan2(P1.x - P0.x, P1.y - P0.y) * Mathf.Rad2Deg + 90;
 
@@ -171,116 +173,128 @@ public class WorldBuilder : MonoBehaviour {
                 angle + 180,
                 incline
             );
-            segment.name = "HighwaySeg " + edge.Item1 + " " + edge.Item2;
+            segment.name = "ArterialSeg " + edge.Item1 + " " + edge.Item2;
             Transform trans = segment.GetComponent<Transform>();
             trans.localScale = new Vector3(dist, 1, 4); //topDownVec.magnitude
 
          }
 
 
-      
-   }
-}
 
-public void BuildArterialLayout(ArterialGenerator atg, Vector2Int regionIdx) {
-   Region region = WorldManager.regions[regionIdx];
-   foreach (KeyValuePair<Vector2Int, ArrayList> regionPair in region.atg.arterialPointsByRegion) {
-      Region curRegion = WorldManager.regions[regionPair.Key];
-      if (!curRegion.arterialLayoutBuilt) {
-         curRegion.arterialLayoutBuilt = true;
-         foreach (Vector2 point in atg.arterialPointsByRegion[regionPair.Key]) {
-            GameObject obj = Instantiate(purpleCube, new Vector3(point.x, 18, point.y), Quaternion.identity);
-            obj.name = "ArterialPoint " + point;
-            Transform trans = obj.GetComponent<Transform>();
-            trans.localScale = new Vector3(6, 4, 6);
+      }
+   }
+
+   public void BuildAreaSeeds(List<(Vector2, float)> seeds) {
+      foreach ((Vector2, float) seed in seeds) {
+         Vector2 v = seed.Item1;
+         GameObject obj = Instantiate(blueCube, new Vector3(v.x, TerrainGen.GenerateTerrainAt((int)v.x, (int)v.y), v.y), Quaternion.identity);
+         obj.name = "AreaSeed " + v + " " + seed.Item2;
+         Transform trans = obj.GetComponent<Transform>();
+         trans.localScale = new Vector3(4, 4, 4);
+      }
+   }
+
+   public void BuildArterialLayout(ArterialGenerator atg, Vector2Int regionIdx) {
+      Region region = WorldManager.regions[regionIdx];
+      foreach (KeyValuePair<Vector2Int, ArrayList> regionPair in region.atg.arterialPointsByRegion) {
+         Region curRegion = WorldManager.regions[regionPair.Key];
+         if (!curRegion.arterialLayoutBuilt) {
+            curRegion.arterialLayoutBuilt = true;
+            foreach (Vector2 point in atg.arterialPointsByRegion[regionPair.Key]) {
+               GameObject obj = Instantiate(purpleCube, new Vector3(point.x, 18, point.y), Quaternion.identity);
+               obj.name = "ArterialPoint " + point;
+               Transform trans = obj.GetComponent<Transform>();
+               trans.localScale = new Vector3(6, 4, 6);
+            }
+         }
+      }
+
+      /*foreach (Vector2 point in atg.initialArterialPoints) {
+         GameObject obj = Instantiate(yellowCube, new Vector3(point.x, 20, point.y), Quaternion.identity);
+         obj.name = "InitialArterialPoint " + point;
+         Transform trans = obj.GetComponent<Transform>();
+         trans.localScale = new Vector3(2, 2, 2);
+      }*/
+
+      //
+      /*ArrayList vert = new ArrayList();
+      foreach (Vertex v in atg.vertices) {
+         vert.Add(v);
+      }*/
+
+      if (true) {
+         foreach ((Vector2, Vector2) e in atg.edges) {
+            //Vector2 P0 = new Vector2((float)((Vertex)vert[e.P0]).X, (float)((Vertex)vert[e.P0]).Y);
+            //Vector2 P1 = new Vector2((float)((Vertex)vert[e.P1]).X, (float)((Vertex)vert[e.P1]).Y);
+            Vector2 P0 = e.Item1;
+            Vector2 P1 = e.Item2;
+
+            //if (wm.regions[regionIdx].bounds.InBounds(P0) || wm.regions[regionIdx].bounds.InBounds(P1)) {
+            if (InPatchBounds(regionIdx, P0, P1)) {
+               //float dist = (P0 - P1).magnitude;
+               //Debug.Log(P0 + " -> " + P1 + " " + dist);
+
+               float x = (float)(P0.x + P1.x) / 2;
+               float y = (float)(P0.y + P1.y) / 2;
+
+               Vector2 vec = new Vector2(P1.x - P0.x, P1.y - P0.y);
+
+               float angle = Mathf.Atan2(P1.x - P0.x, P1.y - P0.y) * Mathf.Rad2Deg + 90;
+
+               GameObject segment = Instantiate(yellowCube, new Vector3(x, 20, y), Quaternion.AngleAxis(angle, Vector3.up));
+               segment.name = "ArterialEdge " + P0 + " " + P1;
+               Transform trans = segment.GetComponent<Transform>();
+               //trans.position = new Vector3(x, 0, y);
+               //trans.rotation = Quaternion.AngleAxis(angle, Vector3.up);
+               trans.localScale = new Vector3(vec.magnitude, 1, 2);
+            }
          }
       }
    }
 
-   foreach (Vector2 point in atg.initialArterialPoints) {
-      GameObject obj = Instantiate(yellowCube, new Vector3(point.x, 20, point.y), Quaternion.identity);
-      obj.name = "InitialArterialPoint " + point;
-      Transform trans = obj.GetComponent<Transform>();
-      trans.localScale = new Vector3(2, 2, 2);
-   }
-
-   //
-   ArrayList vert = new ArrayList();
-   foreach (Vertex v in atg.vertices) {
-      vert.Add(v);
-   }
-
-   if (true) {
-      foreach (Edge e in atg.edges) {
-         Vector2 P0 = new Vector2((float)((Vertex)vert[e.P0]).X, (float)((Vertex)vert[e.P0]).Y);
-         Vector2 P1 = new Vector2((float)((Vertex)vert[e.P1]).X, (float)((Vertex)vert[e.P1]).Y);
-
-         //if (wm.regions[regionIdx].bounds.InBounds(P0) || wm.regions[regionIdx].bounds.InBounds(P1)) {
-         if (InPatchBounds(regionIdx, P0, P1)) {
-            //float dist = (P0 - P1).magnitude;
-            //Debug.Log(P0 + " -> " + P1 + " " + dist);
-
-            float x = (float)(P0.x + P1.x) / 2;
-            float y = (float)(P0.y + P1.y) / 2;
-
-            Vector2 vec = new Vector2(P1.x - P0.x, P1.y - P0.y);
-
-            float angle = Mathf.Atan2(P1.x - P0.x, P1.y - P0.y) * Mathf.Rad2Deg + 90;
-
-            GameObject segment = Instantiate(yellowCube, new Vector3(x, 20, y), Quaternion.AngleAxis(angle, Vector3.up));
-            segment.name = "ArtEdge " + P0 + " " + P1;
-            Transform trans = segment.GetComponent<Transform>();
-            //trans.position = new Vector3(x, 0, y);
-            //trans.rotation = Quaternion.AngleAxis(angle, Vector3.up);
-            trans.localScale = new Vector3(vec.magnitude, 1, 2);
+   public static bool InPatchBounds(Vector2Int regionIdx, Vector2 P0, Vector2 P1) {
+      for (int i = -1; i <= 1; i++) {
+         for (int j = -1; j <= 1; j++) {
+            if (WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P0) || WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P1)) {
+               return true;
+            }
          }
       }
+      return false;
    }
-}
 
-public static bool InPatchBounds(Vector2Int regionIdx, Vector2 P0, Vector2 P1) {
-   for (int i = -1; i <= 1; i++) {
-      for (int j = -1; j <= 1; j++) {
-         if (WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P0) || WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P1)) {
-            return true;
-         }
+   //Highway collision
+   public static void AddHighwayVertToChunkHash(Vector2 vert, (Vector2Int, Vector2Int) edge) {
+      Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
+      if (!highwayVertChunkHash.ContainsKey(chunk)) {
+         highwayVertChunkHash[chunk] = new List<(Vector2, (Vector2Int, Vector2Int))>();
       }
-   }
-   return false;
-}
 
-//Highway collision
-public static void AddHighwayVertToChunkHash(Vector2 vert, (Vector2Int, Vector2Int) edge) {
-   Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
-   if (!highwayVertChunkHash.ContainsKey(chunk)) {
-      highwayVertChunkHash[chunk] = new List<(Vector2, (Vector2Int, Vector2Int))>();
+      highwayVertChunkHash[chunk].Add((vert, edge));
    }
 
-   highwayVertChunkHash[chunk].Add((vert, edge));
-}
+   public static List<(Vector2, (Vector2Int, Vector2Int))> GetHighwayVertList(Vector2 vert) {
+      Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
+      if (!highwayVertChunkHash.ContainsKey(chunk)) {
+         return null;
+      }
 
-public static List<(Vector2, (Vector2Int, Vector2Int))> GetHighwayVertList(Vector2 vert) {
-   Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
-   if (!highwayVertChunkHash.ContainsKey(chunk)) {
-      return null;
+      return highwayVertChunkHash[chunk];
    }
 
-   return highwayVertChunkHash[chunk];
-}
-
-public static bool DoesChunkContainHighway(Vector2 vert) {
-   Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
-   return highwayVertChunkHash.ContainsKey(chunk);
-}
-public static Vector2Int HashChunkGrouping(Vector2Int chunk) {
-   if (chunk.x < 0) {
-      chunk.x -= 1;
+   public static bool DoesChunkContainHighway(Vector2 vert) {
+      Vector2Int chunk = HashChunkGrouping(Util.W2C(vert));
+      return highwayVertChunkHash.ContainsKey(chunk);
    }
-   if (chunk.y < 0) {
-      chunk.y -= 1;
+   public static Vector2Int HashChunkGrouping(Vector2Int chunk) {
+      if (chunk.x < 0) {
+         chunk.x -= 1;
+      }
+      if (chunk.y < 0) {
+         chunk.y -= 1;
+      }
+      return chunk / hashChunkWidth;
    }
-   return chunk / hashChunkWidth;
-}
 
 
 }

@@ -66,6 +66,10 @@ public static class Util {
       return (SameVec2(e1.Item1, e2.Item1) && SameVec2(e1.Item2, e2.Item2)) || (SameVec2(e1.Item1, e2.Item2) && SameVec2(e1.Item2, e2.Item1));
    }
 
+   public static bool SameEdge((Vector2, Vector2) e1, (Vector2, Vector2) e2) {
+      return (SameVec2(e1.Item1, e2.Item1) && SameVec2(e1.Item2, e2.Item2)) || (SameVec2(e1.Item1, e2.Item2) && SameVec2(e1.Item2, e2.Item1));
+   }
+
    public static Vector2Int VecToVecInt(Vector2 v) {
       return new Vector2Int((int)v.x, (int)v.y);
    }
@@ -73,7 +77,6 @@ public static class Util {
 
 
    // Delaunay utils
-   
 
    public static bool IsSameVertex(Vertex v0, Vertex v1) {
       return v0.X == v1.X && v0.Y == v1.Y;
