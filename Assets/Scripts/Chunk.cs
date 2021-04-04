@@ -66,7 +66,7 @@ public class Chunk {
       terrainSnapshot = TerrainGen.GenerateTerrainAt(center.x, center.y);
       terrainHeightMap[localCenter.x, localCenter.y] = terrainSnapshot;
 
-      densitySnapshot = CalculateDensityAt(center.x, center.y);
+      densitySnapshot = TerrainGen.CalculateDensityAtChunk(center);//CalculateDensityAt(center.x, center.y);
       densityMap[localCenter.x, localCenter.y] = densitySnapshot;
 
       state = ChunkState.SNAPSHOTTED;
@@ -155,7 +155,8 @@ public class Chunk {
             Vector2Int globalPoint = new Vector2Int(x, z);
             Vector2Int localPoint = GetLocalCoord(globalPoint);
 
-            float density = CalculateDensityAt(x, z);
+            //float density = CalculateDensityAt(x, z);
+            float density = TerrainGen.CalculateDensityAt(globalPoint);
 
             if (terrainHeightMap[localPoint.x, localPoint.y] > 0) {
                sum += density;

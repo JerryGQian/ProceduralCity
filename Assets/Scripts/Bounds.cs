@@ -13,6 +13,14 @@ public class Bounds {
       this.zMax = zMin + dim;
    }
 
+   public Bounds(float xMin, float zMin, float xMax, float zMax) {
+      dim = Mathf.Max(xMax-xMin, zMax-zMin);
+      this.xMin = xMin;
+      this.xMax = xMax;
+      this.zMin = zMin;
+      this.zMax = zMax;
+   }
+
    public Vector2Int GetCornerVecInt() {
       return new Vector2Int((int)xMin, (int)zMin);
    }
@@ -51,5 +59,18 @@ public class Bounds {
       }
 
       return new Bounds(Mathf.Max(xMax-xMin, zMax-zMin), xMin, zMin);
+   }
+
+   public Vector2 GetCornerTopLeft() {
+      return new Vector2Int((int)xMin, (int)zMin + (int)dim);
+   }
+   public Vector2 GetCornerTopRight() {
+      return new Vector2Int((int)xMin + (int)dim, (int)zMin + (int)dim);
+   }
+   public Vector2 GetCornerBottomLeft() {
+      return new Vector2Int((int)xMin, (int)zMin);
+   }
+   public Vector2 GetCornerBottomRight() {
+      return new Vector2Int((int)xMin + (int)dim, (int)zMin);
    }
 }

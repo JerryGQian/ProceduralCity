@@ -11,7 +11,7 @@ public class ArterialGenerator {
    public ArrayList arterialPoints;
    public Dictionary<Vector2Int, ArrayList> arterialPointsByRegion;
    public int initSpacingInChunks = 4;
-   public float standardAngleTolerance = 45f;
+   public float standardAngleTolerance = 30f;
    public float spawnAngleTolerance = 120f;
    public int standardMaxLength = 100;
    public int spawnMaxLength = 130;
@@ -27,8 +27,9 @@ public class ArterialGenerator {
 
    private ArrayList patchHighways;
    private HashSet<Vector2> patchHighwaysSet;
-   // map from regionIdx to list of ChainStarts(highway exit position and highway angle)
-   private Dictionary<Vector2Int, List<ChainStart>> chainStartsByRegion = new Dictionary<Vector2Int, List<ChainStart>>();
+   // map from regionIdx to list of ChainStarts(highway exit position and highway angle) 
+   private Dictionary<Vector2Int, List<ChainStart>> highwayChainStartsByRegion = new Dictionary<Vector2Int, List<ChainStart>>();
+   private Dictionary<Vector2Int, List<ChainStart>> boundaryChainStartsByRegion = new Dictionary<Vector2Int, List<ChainStart>>();
    public ArrayList edges;
    public ArrayList arterialEdges = new ArrayList();
    private Dictionary<Vector2, ArrayList> regionToVertices = new Dictionary<Vector2, ArrayList>();
@@ -97,7 +98,9 @@ public class ArterialGenerator {
             }
             backboneEdgeCount.Add(thisIdx, 0);
             regionToVertices.Add(thisIdx, new ArrayList());
-            chainStartsByRegion.Add(thisIdx, new List<ChainStart>());
+
+            highwayChainStartsByRegion.Add(thisIdx, new List<ChainStart>());
+            boundaryChainStartsByRegion.Add(thisIdx, new List<ChainStart>());
 
             if (WorldManager.regions.ContainsKey(thisIdx)) {
                region = WorldManager.regions[thisIdx];
@@ -125,7 +128,7 @@ public class ArterialGenerator {
       }
 
       // Connect loose ends for inner patch
-      ConnectLooseEnds(regionIdx + new Vector2Int(-1, 1), true, true); // top left
+      /*ConnectLooseEnds(regionIdx + new Vector2Int(-1, 1), true, true); // top left
       ConnectLooseEnds(regionIdx + new Vector2Int(0, 1), true, true); // top mid
       ConnectLooseEnds(regionIdx + new Vector2Int(1, 1), false, true); // top right
       ConnectLooseEnds(regionIdx + new Vector2Int(-1, 0), true, true); // mid left
@@ -144,10 +147,10 @@ public class ArterialGenerator {
          if ((!innerPatchBounds.InBounds(e.Item1) && !innerPatchBounds.InBounds(e.Item2)) || !backboneEdges.Contains((e.Item1, e.Item2))) {
             RemoveEdge(e);
          }
-      }
+      }*/
 
       foreach ((Vector2, Vector2) e in edges) {
-         arterialEdges.Add(e);
+         arterialEdges.Add(e); // TODO remove this and refactor to "edges", they're the same
          WorldManager.AddToRoadGraph(e.Item1, e.Item2);
          WorldManager.AddToArterialEdgeSet(e.Item1, e.Item2);
       }
@@ -174,25 +177,21 @@ public class ArterialGenerator {
             point += Hp.arterialRandomness * r.NextVector2(-10, 10);
 
             if (ShouldGenPoint((int)point.x, (int)point.y, thisBounds)) {
-            //Debug.Log("testing " + idx + " " + regionIdx);
                arterialPointsByRegion[idx].Add(point);
                regionToVertices[idx].Add(point);
-
-               //add through density
-               /*float density = -1; // MAYBE KEEP THIS? ###################################
-               patchDensitySnapshotsMap.TryGetValue(Util.W2C(point), out density);
-               if (density > 0.9f) {
-                  //Debug.Log("Adding density chain start " + point);
-                  Vector2 vDirection = Vector2.up;
-                  chainStarts.Add(point, vDirection);
-               }*/
             }
          }
       }
 
       // #########################################################
 
-      // add highway exits
+      // add region boundary seeds
+      GenRegionBoundarySeeds(idx, 'N');
+      GenRegionBoundarySeeds(idx, 'W');
+      GenRegionBoundarySeeds(idx, 'S');
+      GenRegionBoundarySeeds(idx, 'E');
+
+      // add highway exit seeds
       foreach (ArrayList segments in patchHighways) {
          for (int i = 2; i < segments.Count - 2; i++) {
             Vector2 v = (Vector2)segments[i];
@@ -202,8 +201,11 @@ public class ArterialGenerator {
                // calc avg angle and add to map
                Vector2 vPrev = (Vector2)segments[i - 1];
                Vector2 vNext = (Vector2)segments[i + 1];
-               Vector2 vDirection = vNext - vPrev;
-               chainStartsByRegion[idx].Add(new ChainStart(v, vDirection));
+               Vector2 hwDir = (vNext - vPrev).normalized;
+               Vector2 vDirection1 = new Vector2(-hwDir.y, hwDir.x);
+               Vector2 vDirection2 = -vDirection1;
+               highwayChainStartsByRegion[idx].Add(new ChainStart(v, vDirection1));
+               highwayChainStartsByRegion[idx].Add(new ChainStart(v, vDirection2));
             }
          }
       }
@@ -242,7 +244,7 @@ public class ArterialGenerator {
          Vector2 vec2 = Util.VertexToVector2(vert2);
 
          edges.Add((vec1, vec2));
-         
+
          // build neighbor map
          if (!neighbors.ContainsKey(vec1)) {
             neighbors[vec1] = new List<Vector2>();
@@ -262,23 +264,20 @@ public class ArterialGenerator {
          Vector2 vec1 = Util.VertexToVector2(v1);
          (Vector2, Vector2) tup1 = (vec0, vec1);
          (Vector2, Vector2) tup2 = (vec1, vec0);
-         
+
          if (!WorldManager.edgeState.ContainsKey(tup1)) { //needs removal check
             if (IsFullHighwayEdge(tup1)) { //  || (vec0 - vec1).magnitude > 100
                // remove edge for first time
                WorldManager.edgeState[tup1] = false;
                WorldManager.edgeState[tup2] = false;
                RemoveEdge(tup1);
-               RemoveEdge(tup2);
                continue;
             }
 
-            
             // remove if middle is on water
             Vector2 mid = (vec0 + vec1) / 2;
             if (TerrainGen.IsWaterAt(mid)) {
                RemoveEdge(tup1);
-               RemoveEdge(tup2);
             }
 
             // do not register positive! next loop still needs to check
@@ -286,7 +285,6 @@ public class ArterialGenerator {
          else { // remove if removed before
             if (!WorldManager.edgeState[tup1]) {
                RemoveEdge(tup1);
-               RemoveEdge(tup2);
                continue;
             }
          }
@@ -295,10 +293,9 @@ public class ArterialGenerator {
 
       // #########################################################
 
-      List<ChainStart> chainStartList = chainStartsByRegion[idx];
-      chainStartList.Sort();
-      
-      foreach (ChainStart cs in chainStartList) { //chainStarts foreach (KeyValuePair<Vector2, Vector2> exit in chainStartList)
+      GenNetworkFromSeeds(idx);
+
+      /*foreach (ChainStart cs in highwayChainStartList) { //chainStarts foreach (KeyValuePair<Vector2, Vector2> exit in chainStartList)
                                                   // Pick 2 edges with the most perpendicular angle
          Vector2 hwDirection = cs.dir;
          Vector2 hwVec = cs.v;
@@ -336,6 +333,7 @@ public class ArterialGenerator {
                   if (regionBounds.ContainsKey(thisRegionIdx) && regionBounds[thisRegionIdx].InBounds(maxVec) && (maxVec - hwVec).magnitude < 100) {
                      backboneEdges.Add((hwVec, maxVec));
                      backboneEdges.Add((maxVec, hwVec));
+                     WorldManager.AddToRoadGraph(hwVec, maxVec);
                      EstablishChain(thisRegionIdx, maxVec, maxVec - hwVec, standardAngleTolerance, standardMaxLength);
                   }
                   else {
@@ -348,6 +346,7 @@ public class ArterialGenerator {
                   if (regionBounds.ContainsKey(thisRegionIdx) && regionBounds[thisRegionIdx].InBounds(maxVec2) && (maxVec2 - hwVec).magnitude < 100) {
                      backboneEdges.Add((hwVec, maxVec2));
                      backboneEdges.Add((maxVec2, hwVec));
+                     WorldManager.AddToRoadGraph(hwVec, maxVec);
                      EstablishChain(thisRegionIdx, maxVec2, maxVec2 - hwVec, standardAngleTolerance, standardMaxLength);
                   }
                   else {
@@ -363,6 +362,164 @@ public class ArterialGenerator {
 
       if (backboneEdgeCount[idx] == 0) {
          SpawnBackboneChains(idx);
+      }*/
+   }
+
+   // Places seeds on a region boundary side, translate to ...Uniform() function
+   private void GenRegionBoundarySeeds(Vector2Int idx, char side) {
+      Bounds b = WorldManager.regions[idx].bounds;
+      List<Vector2> list = new List<Vector2>();
+      Vector2 dir = Vector2.zero;
+      switch (side) {
+         case 'N':
+            list = GenRegionBoundarySeedsUniform(idx + Vector2Int.up, 'S');
+            break;
+         case 'W':
+            list = GenRegionBoundarySeedsUniform(idx, 'W');
+            dir = Vector2.left;
+            break;
+         case 'S':
+            list = GenRegionBoundarySeedsUniform(idx, 'S');
+            dir = Vector2.up;
+            break;
+         case 'E':
+            list = GenRegionBoundarySeedsUniform(idx + Vector2Int.left, 'W');
+            dir = Vector2.left;
+            break;
+      }
+
+      // Add seeds to data structs
+      foreach (Vector2 v in list) {
+         arterialPointsByRegion[idx].Add(v);
+         ChainStart newSeed = new ChainStart(v, dir);
+         boundaryChainStartsByRegion[idx].Add(newSeed);
+      }
+   }
+
+   // Only serves West and South directions
+   private List<Vector2> GenRegionBoundarySeedsUniform(Vector2Int idx, char side) {
+      List<Vector2> list = new List<Vector2>();
+      Bounds b = WorldManager.regions[idx].bounds;
+      Vector2 basePoint = Vector2.zero;
+      Vector2 offsetDir = Vector2.zero;
+      int countIdx = 0;  // either 0 or 1
+
+      switch (side) {
+         case 'W':
+            basePoint = b.GetCornerBottomRight();
+            offsetDir = Vector2.up;
+            countIdx = 0;
+            break;
+         case 'S':
+            basePoint = b.GetCornerBottomLeft();
+            offsetDir = Vector2.right;
+            countIdx = 1;
+            break;
+      }
+
+      CoordRandom cr = new CoordRandom(idx);
+      int[] count = new int[2];
+      count[0] = cr.Next(1, 4);
+      count[1] = cr.Next(1, 4);
+
+      // wastes count[0] num of random offsets if we are gening for South
+      if (countIdx == 1) {
+         for (int i = 0; i < count[0]; i++) {
+            cr.Next(0, WorldManager.chunkSize * WorldManager.regionDim);
+         }
+      }
+      for (int i = 0; i < count[countIdx]; i++) {
+         int offset = cr.Next(0, WorldManager.chunkSize * WorldManager.regionDim);
+         Vector2 newSeedV = basePoint + offset * offsetDir;
+         // check if seed too close to existing seeds
+         /*bool redo = false;
+         foreach (ChainStart cs in boundaryChainStartsByRegion[idx]) {
+            if ((cs.v - newSeedV).magnitude < 15) {
+               redo = true;
+            }
+         }
+         if (redo) {
+            i--;
+            continue;
+         }*/
+         // add newly found seed
+         list.Add(newSeedV);
+      }
+      return list;
+   }
+
+   private void GenNetworkFromSeeds(Vector2Int idx) {
+      List<ChainStart> boundarySeeds = boundaryChainStartsByRegion[idx];
+      List<ChainStart> highwaySeeds = highwayChainStartsByRegion[idx];
+      boundarySeeds.Sort();
+      highwaySeeds.Sort();
+
+      Queue<(Vector2, Vector2)> queue = new Queue<(Vector2, Vector2)>();
+      HashSet<(Vector2, Vector2)> visited = new HashSet<(Vector2, Vector2)>();
+
+      // for initial seed non-selected removal
+      Dictionary<Vector2, List<Vector2>> highwaySelection = new Dictionary<Vector2, List<Vector2>>();
+      foreach (ChainStart cs in highwaySeeds) {
+         if (!highwaySelection.ContainsKey(cs.v)) {
+            highwaySelection.Add(cs.v, new List<Vector2>());
+         }
+      }
+      List<ChainStart> seeds = boundarySeeds;
+      seeds.AddRange(highwaySeeds);
+      // enqueue from seeds
+      foreach (ChainStart cs in seeds) {
+         // finds closest matching neighbor
+         float minDiff = 181;
+         Vector2 minVec = Vector2.zero;
+         if (neighbors.ContainsKey(cs.v)) {
+            foreach (Vector2 neighborVec in neighbors[cs.v]) {
+               float diff = Vector2.Angle(cs.dir, neighborVec - cs.v);
+               if (Mathf.Abs(diff) < minDiff) {
+                  minDiff = Mathf.Abs(diff);
+                  minVec = neighborVec;
+               }
+            }
+         }
+         if (minDiff < 181) { // only if found
+            (Vector2, Vector2) tup = (cs.v, minVec);
+            queue.Enqueue(tup);
+            visited.Add(tup);
+            visited.Add((tup.Item2, tup.Item1));
+            // remove non-added edges
+            // highway check to see if both sides have been added before performing removal
+            if (highwaySelection.ContainsKey(cs.v)) {
+               highwaySelection[cs.v].Add(minVec);
+               if (highwaySelection[cs.v].Count >= 2) {
+                  foreach (Vector2 neighborVec in neighbors[cs.v]) {
+                     bool remove = true;
+                     foreach (Vector2 selected in highwaySelection[cs.v]) {
+                        if (neighborVec == selected) {
+                           remove = false;
+                           break;
+                        }
+                     }
+                     if (remove) {
+                        RemoveEdge(tup);
+                     }
+                  }
+               }
+            }
+            else { // if not highway
+               foreach (Vector2 neighborVec in neighbors[cs.v]) {
+                  if (neighborVec != minVec) {
+                     RemoveEdge(tup);
+                  }
+               }
+            }
+         }
+      }
+
+      // bfs to remove unwanted edges
+      while (queue.Count > 0) {
+         (Vector2, Vector2) tup = queue.Dequeue();
+         Vector2 src = tup.Item1;
+         Vector2 cur = tup.Item2;
+
       }
    }
 
@@ -404,20 +561,22 @@ public class ArterialGenerator {
             (ArrayList)looseEnds[regionIdx][1],
             (ArrayList)looseEnds[regionIdx + new Vector2(1, 0)][3],
             (PriorityQueue<Vector2>)backboneVerticesPQs[regionIdx][1],
-            (PriorityQueue<Vector2>)backboneVerticesPQs[regionIdx + new Vector2(1, 0)][3]);
+            (PriorityQueue<Vector2>)backboneVerticesPQs[regionIdx + new Vector2(1, 0)][3],
+            true);
       }
       if (south) {
          ConnectLooseEndsFor(
             (ArrayList)looseEnds[regionIdx][2],
             (ArrayList)looseEnds[regionIdx + new Vector2(0, -1)][0],
             (PriorityQueue<Vector2>)backboneVerticesPQs[regionIdx][2],
-            (PriorityQueue<Vector2>)backboneVerticesPQs[regionIdx + new Vector2(0, -1)][0]);
+            (PriorityQueue<Vector2>)backboneVerticesPQs[regionIdx + new Vector2(0, -1)][0],
+            false);
       }
    }
 
 
 
-   private void ConnectLooseEndsFor(ArrayList ends1, ArrayList ends2, PriorityQueue<Vector2> pq1, PriorityQueue<Vector2> pq2) {
+   private void ConnectLooseEndsFor(ArrayList ends1, ArrayList ends2, PriorityQueue<Vector2> pq1, PriorityQueue<Vector2> pq2, bool verticalOrHorizontal) {
       // if empty list(s), pick from PQ
       int n = 1;
       if (ends1.Count == 0) {
@@ -431,8 +590,33 @@ public class ArterialGenerator {
             //Debug.Log("usePQ adding:" + v);
          }
       }
+      if (ends2.Count < ends1.Count) {
+         for (int i = 0; i < ends1.Count - ends2.Count; i++) {
+            Vector2 v = pq2.PeekFromMax(i);
+            ends2.Add(v);
+         }
+      }
+
+      // Sorts in ascending axis order
+      ends1 = Util.SortVecArrayList(ends1, verticalOrHorizontal);
+      ends2 = Util.SortVecArrayList(ends2, verticalOrHorizontal);
 
       for (int i = 0; i < ends1.Count; i++) {
+         Vector2 v1 = (Vector2)ends1[i];
+         Vector2 v2 = (Vector2)ends2[i];
+
+         Vector2 mid = (v1 + v2) / 2;
+         float dist = (v1 - v2).magnitude;
+         //Debug.Log(!(patchHighwaysSet.Contains(v1) && patchHighwaysSet.Contains(minVec)));
+         if (dist < 100 && !TerrainGen.IsWaterAt(mid) && !(patchHighwaysSet.Contains(v1) && patchHighwaysSet.Contains(v2))) {
+            if (!backboneEdges.Contains((v1, v2)) && !backboneEdges.Contains((v2, v1))) {
+               edges.Add((v1, v2));
+               backboneEdges.Add((v1, v2));
+               backboneEdges.Add((v2, v1));
+            }
+         }
+      }
+      /*for (int i = 0; i < ends1.Count; i++) {
          //foreach (Vector2 v1 in ends1) {
          Vector2 v1 = (Vector2)ends1[i];
          //Debug.Log(" ends1 count: " + ends1.Count + " " + v1);
@@ -456,12 +640,9 @@ public class ArterialGenerator {
                backboneEdges.Add((minVec, v1));
             }
          }
-         //else if (ends2.Count >= 2) {
-            //Debug.Log("Skip");
-            //i--;
-         //}
+
          ends2.Remove(minVec);
-      }
+      }*/
 
    }
 
@@ -474,11 +655,6 @@ public class ArterialGenerator {
          && TerrainGen.GenerateTerrainAt(x, y) < 11
          && (density == -1 || density > 0.2f)
          && b.InBounds(new Vector2(x, y));
-   }
-
-   private bool ShouldGenEdge(Vector2 v1, Vector2 v2) {
-      return (innerPatchBounds.InBounds(v1) || innerPatchBounds.InBounds(v2));
-      //&& (v1-v2).magnitude < 70;
    }
 
    // for intial point removal
@@ -530,8 +706,9 @@ public class ArterialGenerator {
    }
 
    private void RemoveEdge((Vector2, Vector2) e) {
+      (Vector2, Vector2) e2 = (e.Item2, e.Item1);
       for (int i = 0; i < edges.Count; i++) {
-         if (Util.SameEdge(((Vector2, Vector2))edges[i], e)) {
+         if (Util.SameEdge(((Vector2, Vector2))edges[i], e) || Util.SameEdge(((Vector2, Vector2))edges[i], e2)) {
             edges.RemoveAt(i);
          }
       }
@@ -589,12 +766,42 @@ public class ArterialGenerator {
 
       float minAngle = Vector2.Angle(v, minAngleVec);
 
+      // Next Point is IN BOUNDS
       if (regionBounds.ContainsKey(regionIdx) && regionBounds[regionIdx].InBounds(minAngleVec)) {
-         // Next Point is IN BOUNDS
-         if (minAngle < angleTolerance && minAngleVec != Vector2.zero && (v - minAngleVec).magnitude < maxLength) {
-            // Next Point is ANGLED ACCEPTABLY
+         // Traverse to see if new point is redundant
+         bool redundant = false;
+         float costLim = 2.5f * (v - minAngleVec).magnitude;
+         Queue<(Vector2, float)> queue = new Queue<(Vector2, float)>();
+         queue.Enqueue((v, 0));
+         int i = 0;
+         while (queue.Count > 0) {
+            i++;
+            (Vector2, float) curr = queue.Dequeue();
+            if (WorldManager.roadGraph.ContainsKey(curr.Item1)) {
+               HashSet<Vector2> neighbors = WorldManager.roadGraph[curr.Item1];
+               foreach (Vector2 neighbor in neighbors) {
+                  float newCost = curr.Item2 + (neighbor - curr.Item1).magnitude;
+                  if (newCost < costLim) {
+                     if (neighbor == minAngleVec) {
+                        redundant = true;
+                        break;
+                     }
+                     queue.Enqueue((neighbor, newCost));
+                  }
+               }
+               if (redundant || i > 150) {
+                  Debug.Log("redundant or 100: " + i);
+                  queue.Clear();
+                  break;
+               }
+            }
+         }
+
+         // Next Point is ANGLED ACCEPTABLY
+         if (!redundant && minAngle < angleTolerance && minAngleVec != Vector2.zero && (v - minAngleVec).magnitude < maxLength) {
             backboneEdges.Add((v, minAngleVec));
             backboneEdges.Add((minAngleVec, v));
+            WorldManager.AddToRoadGraph(v, minAngleVec);
             EstablishChain(regionIdx, minAngleVec, minAngleVec - v, angleTolerance, maxLength);
             // make vertices near region borders loose ends
             /*if (regionBounds[regionIdx].DistFromCenter(v) > 90) {
@@ -674,13 +881,4 @@ public class ArterialGenerator {
       }
       return count;
    }
-
-   /*private bool IsSameEdge(Edge e0, Edge e1) {
-      Vertex e0v0 = (Vertex)vertices[e0.P0];
-      Vertex e0v1 = (Vertex)vertices[e0.P1];
-      Vertex e1v0 = (Vertex)vertices[e1.P0];
-      Vertex e1v1 = (Vertex)vertices[e1.P1];
-
-      return Util.IsSameVertex(e0v0, e1v0) && Util.IsSameVertex(e0v1, e1v1);  //e0v0.X == e1v0.X && e0v0.Y == e1v0.Y && e0v1.X == e1v1.X && e0v1.Y == e1v1.Y;
-   }*/
 }

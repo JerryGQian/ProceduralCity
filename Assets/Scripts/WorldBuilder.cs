@@ -11,12 +11,19 @@ public class WorldBuilder : MonoBehaviour {
    public GameObject yellowCube;
    public GameObject purpleCube;
    public GameObject blueCube;
+   public GameObject chunkMeshPrefab;
+   public GameObject roadMeshPrefab;
+
    public static Dictionary<(Vector2, Vector2), bool> builtHighways = new Dictionary<(Vector2, Vector2), bool>();
    public static HashSet<(Vector2, Vector2)> builtArterial = new HashSet<(Vector2, Vector2)>();
+   public static Dictionary<string, GameObject> builtAreas = new Dictionary<string, GameObject>();
+   //public static Dictionary<Vector2Int, GameObject> chunkMeshes = new Dictionary<Vector2Int, GameObject>();
+   public static Dictionary<string, GameObject> roadMeshes = new Dictionary<string, GameObject>();
+
    public static Vector2 SignalVector = new Vector2(999999, 999999); // Unique vector that signals something, eg a jump in highways
    // Spatial hashing of highway vertices for intersection management, <chunkIdx, List<vertex,(parent vertices)>>
    public static Dictionary<Vector2Int, List<(Vector2, (Vector2Int, Vector2Int))>> highwayVertChunkHash = new Dictionary<Vector2Int, List<(Vector2, (Vector2Int, Vector2Int))>>();
-   private static int hashChunkWidth = 2;
+   private static int hashChunkWidth = 3;
 
    void Start() {
 
@@ -175,7 +182,7 @@ public class WorldBuilder : MonoBehaviour {
             );
             segment.name = "ArterialSeg " + edge.Item1 + " " + edge.Item2;
             Transform trans = segment.GetComponent<Transform>();
-            trans.localScale = new Vector3(dist, 1, 4); //topDownVec.magnitude
+            trans.localScale = new Vector3(dist, 1, 2); //topDownVec.magnitude
 
          }
 
@@ -194,6 +201,76 @@ public class WorldBuilder : MonoBehaviour {
       }
    }
 
+   public void BuildAreaLocal(Area a) {
+      string areaName = a.ToString();
+      GameObject areaObj = new GameObject("Area " + areaName);
+      //List<((Vector2, Vector2), bool)> localSegments = a.localSegmentsPending;
+
+      GameObject roadMesh = Instantiate(roadMeshPrefab, new Vector3(0, 0, 0), Quaternion.identity);
+      roadMesh.transform.SetParent(areaObj.transform);
+      RoadMeshRenderer renderer = roadMesh.GetComponent<RoadMeshRenderer>();
+      renderer.BuildMesh(a.localSegments, 1f);
+      roadMeshes[areaName] = roadMesh;
+      /*foreach (((Vector2, Vector2), bool) seg in localSegments) {
+         Vector2 P0 = seg.Item1.Item1;
+         Vector2 P1 = seg.Item1.Item2;
+
+         // Path disconnect if signal, skip 2 segments!
+         if (P0 == SignalVector || P1 == SignalVector) {
+            continue;
+         }
+
+         Vector2 topDownVec = new Vector2(P1.x - P0.x, P1.y - P0.y);
+         // 3D version of points with terrain height
+         Vector3 P0_3 = new Vector3(P0.x, TerrainGen.GenerateTerrainAt((int)P0.x, (int)P0.y), P0.y);
+         Vector3 P1_3 = new Vector3(P1.x, TerrainGen.GenerateTerrainAt((int)P1.x, (int)P1.y), P1.y);
+         float dist = (P0_3 - P1_3).magnitude;
+         float incline = Mathf.Atan2(topDownVec.magnitude, P0_3.y - P1_3.y) * Mathf.Rad2Deg + 90;
+
+         float x = (float)(P0.x + P1.x) / 2;
+         float y = (float)(P0.y + P1.y) / 2;
+
+
+         float angle = Mathf.Atan2(P1.x - P0.x, P1.y - P0.y) * Mathf.Rad2Deg + 90;
+
+         float objHeight = (TerrainGen.GenerateTerrainAt((int)P0_3.x, (int)P0_3.z) + TerrainGen.GenerateTerrainAt((int)P1_3.x, (int)P1_3.z)) / 2;
+         if (objHeight < 0) {
+            objHeight = 1f;
+         }
+         GameObject segment = Instantiate(yellowCube, new Vector3(x, objHeight, y), Quaternion.AngleAxis(angle, Vector3.up));
+         segment.transform.eulerAngles = new Vector3(
+             segment.transform.eulerAngles.x,
+             angle + 180,
+             incline
+         );
+         segment.name = "LocalSeg " + P0 + " " + P1;
+         Transform trans = segment.GetComponent<Transform>();
+         trans.localScale = new Vector3(dist, 1, 1);
+         trans.SetParent(areaObj.transform);
+      }*/
+      //Debug.Log("built Area: " + areaName);
+      builtAreas[areaName] = areaObj;
+   }
+
+   public void DestroyDistantAreas(List<Area> currAreas) {
+      HashSet<string> currAreasSet = new HashSet<string>();
+      foreach (Area a in currAreas) {
+         string areaName = a.ToString();
+         currAreasSet.Add(areaName);
+      }
+      List<string> toDestroy = new List<string>();
+      foreach (string areaName in builtAreas.Keys) {
+         if (!currAreasSet.Contains(areaName)) {
+            toDestroy.Add(areaName);
+         }
+      }
+      foreach (string areaName in toDestroy) {
+         //Debug.Log("destroyed Area: " + areaName);
+         Destroy(builtAreas[areaName]);
+         builtAreas.Remove(areaName);
+      }
+   }
+
    public void BuildArterialLayout(ArterialGenerator atg, Vector2Int regionIdx) {
       Region region = WorldManager.regions[regionIdx];
       foreach (KeyValuePair<Vector2Int, ArrayList> regionPair in region.atg.arterialPointsByRegion) {
@@ -204,23 +281,10 @@ public class WorldBuilder : MonoBehaviour {
                GameObject obj = Instantiate(purpleCube, new Vector3(point.x, 18, point.y), Quaternion.identity);
                obj.name = "ArterialPoint " + point;
                Transform trans = obj.GetComponent<Transform>();
-               trans.localScale = new Vector3(6, 4, 6);
+               trans.localScale = new Vector3(5, 4, 5);
             }
          }
       }
-
-      /*foreach (Vector2 point in atg.initialArterialPoints) {
-         GameObject obj = Instantiate(yellowCube, new Vector3(point.x, 20, point.y), Quaternion.identity);
-         obj.name = "InitialArterialPoint " + point;
-         Transform trans = obj.GetComponent<Transform>();
-         trans.localScale = new Vector3(2, 2, 2);
-      }*/
-
-      //
-      /*ArrayList vert = new ArrayList();
-      foreach (Vertex v in atg.vertices) {
-         vert.Add(v);
-      }*/
 
       if (true) {
          foreach ((Vector2, Vector2) e in atg.edges) {

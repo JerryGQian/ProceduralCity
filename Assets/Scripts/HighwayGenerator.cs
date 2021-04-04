@@ -138,8 +138,6 @@ public class HighwayGenerator {
          for (int i = 0; i < segments.Count - 1; i++) {
             Vector2 v = (Vector2)segments[i];
 
-            //Vector2Int chunkIdx = Util.W2C(v);
-            //Debug.Log(DoesChunkContainHighway(chunkIdx) + " " + chunkIdx + " " + v);
             if (WorldBuilder.DoesChunkContainHighway(v)) {
                firstIdx = i;
                vertListFirst = WorldBuilder.GetHighwayVertList(v);
@@ -150,7 +148,6 @@ public class HighwayGenerator {
          if (firstIdx >= 0) {
             for (int i = segments.Count - 1; i > 0; i--) {
                Vector2 v = (Vector2)segments[i];
-               //Vector2Int chunkIdx = Util.W2C(v);
                if (WorldBuilder.DoesChunkContainHighway(v)) {
                   secondIdx = i;
                   vertListSecond = WorldBuilder.GetHighwayVertList(v);
@@ -158,10 +155,6 @@ public class HighwayGenerator {
                }
             }
          }
-
-         /*if (new Vector2((float)v1.X, (float)v1.Y) == new Vector2(-440f, 270f)) {
-            Debug.Log("found: " + firstIdx + " " + secondIdx + " tot:" + segments.Count);
-         }*/
 
          // segment join logic
          if (vertListFirst != null && vertListSecond != null && firstIdx >= 0 && secondIdx >= 0) {
@@ -181,10 +174,7 @@ public class HighwayGenerator {
                foreach ((Vector2, (Vector2Int, Vector2Int)) tup in vertListSecond) {
                   if (eVec.Item1 == tup.Item2.Item2 || eVec.Item1 == tup.Item2.Item1) {
                      segments.RemoveRange(0, secondIdx);
-                     /*if (new Vector2((float)v1.X, (float)v1.Y) == new Vector2(-440f, 270f)) {
-                        Debug.Log("found: " + firstIdx + " " + secondIdx + " tot post:" + segments.Count);
-                     }*/
-                     //Debug.Log(tup.Item1);
+
                      segments.Insert(0, tup.Item1);
                      done = true;
                      break;

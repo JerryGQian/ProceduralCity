@@ -109,11 +109,14 @@
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanResult.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />
     <Compile Include="Assets\Scripts\Hp.cs" />
+    <Compile Include="Assets\Scripts\AreaFinder.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Winding.cs" />
     <Compile Include="Assets\Scripts\Util.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\VoronoiFactory.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Data\BadTriQueue.cs" />
+    <Compile Include="Assets\Scripts\Area.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\GenericMesher.cs" />
+    <Compile Include="Assets\Scripts\LocalGenerator.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\RegionPointer.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\TriangleFormat.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\CuthillMcKee.cs" />
@@ -198,9 +201,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
-    <Compile Include="Assets\Scripts\AreaFinder.cs" />
-    <Compile Include="Assets\Scripts\LocalGenerator.cs" />
-    <Compile Include="Assets\Scripts\Area.cs" />
+    <Compile Include="Assets\Scripts\RoadMeshRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />

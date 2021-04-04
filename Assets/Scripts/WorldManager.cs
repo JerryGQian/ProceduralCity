@@ -34,6 +34,7 @@ public class WorldManager : MonoBehaviour {
    public static Dictionary<string, Area> areas = new Dictionary<string, Area>();
 
    public GameObject ChunkMeshPrefab;
+   public GameObject roadMeshPrefab;
    public GameObject indicator; // for visualization
    public GameObject cube;
 
@@ -42,10 +43,10 @@ public class WorldManager : MonoBehaviour {
    // Start is called before the first frame update
    void Start() {
       InvokeRepeating("LoadLocal", 0, 0.75f);
-      //InvokeRepeating("DestroyDistantChunks", 0.75f, 0.75f);
+      InvokeRepeating("DestroyDistant", 0.75f, 0.75f);
    }
 
-   public void DestroyDistantChunks() {
+   public void DestroyDistant() {
       Vector2Int pos = W2C(player.transform.position);
       ArrayList meshesToRemove = new ArrayList();
       foreach (KeyValuePair<Vector2Int, GameObject> kv in chunkMeshes) {
@@ -60,6 +61,8 @@ public class WorldManager : MonoBehaviour {
       foreach (Vector2Int idx in meshesToRemove) {
          chunkMeshes.Remove(idx);
       }
+
+      
    }
 
    void LoadLocal() {
@@ -234,7 +237,7 @@ public class WorldManager : MonoBehaviour {
       //IEnumerator genArterialCoroutine = region.atg.GenArterialLayout();
       region.atg.GenArterialLayout();
       //yield return StartCoroutine(genHighwayCoroutine);
-      //wb.BuildArterialLayout(region.atg, regionIdx);
+      wb.BuildArterialLayout(region.atg, regionIdx);
       yield return null;
    }
 
@@ -278,22 +281,32 @@ public class WorldManager : MonoBehaviour {
       foreach (Vector2 v in sourceVerts) {
          sourceVertList.Add(v);
       }
-
       List<Area> currAreas = AreaFinder.FindAreas(sourceVertList);
+      HashSet<string> currAreasSet = new HashSet<string>();
+      foreach (Area a in currAreas) {
+         currAreasSet.Add(a.ToString());
+      }
+      wb.DestroyDistantAreas(currAreas);
       foreach (Area a in currAreas) {
          //Debug.Log("Name: " + a.ToString());
          string areaName = a.ToString();
+         currAreasSet.Add(areaName);
          if (!areas.ContainsKey(areaName)) {
-            //Debug.Log("Gening: " + areaName);
-            areas[areaName] = a;
             a.GenArea();
-            foreach (KeyValuePair<(Vector2, Vector2), ArrayList> e in a.arterialSegments) {
+            areas[areaName] = a;
+         }
+         Area actualArea = areas[areaName];
+         if (!WorldBuilder.builtAreas.ContainsKey(areaName)) { 
+            Debug.Log("Gening Area " + areaName);
+            foreach (KeyValuePair<(Vector2, Vector2), ArrayList> e in actualArea.arterialSegments) {
                wb.BuildArterial(e.Key, e.Value);
             }
-            wb.BuildAreaSeeds(a.seeds);
+            wb.BuildAreaSeeds(actualArea.seeds);
+            wb.BuildAreaLocal(actualArea);
          }
-         
       }
+      
+      
       //Debug.Log("AreasFound: " + areas.Count);
    }
 

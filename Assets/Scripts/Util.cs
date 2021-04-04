@@ -11,6 +11,40 @@ public static class Util {
 
    private static Vector2 angleBase = new Vector2(1, 0);
 
+   // sorts based on an axis : "x" = true, "y" = false
+   public static ArrayList SortVecArrayList(ArrayList list, bool axis) {
+      ArrayList newList = new ArrayList();
+      foreach (Vector2 v in list) {
+         bool found = false;
+         if (!axis) {
+            for (int i = 0; i < newList.Count; i++) {
+               Vector2 v2 = (Vector2)newList[i];
+               if (v.x < v2.x) {
+                  found = true;
+                  newList.Insert(i, v);
+                  break;
+               }
+            }
+         }
+         else if (axis) {
+            for (int i = 0; i < newList.Count; i++) {
+               Vector2 v2 = (Vector2)newList[i];
+               if (v.y < v2.y) {
+                  found = true;
+                  newList.Insert(i, v);
+                  break;
+               }
+            }
+         }
+         if (!found) newList.Add(v);
+      }
+      return newList;
+   }
+
+   public static float Angle2Radians(float angle) {
+      return (Mathf.PI / 180) * angle;
+   }
+
    public static string List2String(ArrayList list) {
       string s = "";
       for (int i = 0; i < list.Count; i++) {

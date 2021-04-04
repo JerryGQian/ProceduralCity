@@ -97,7 +97,7 @@ public class AreaFinder {
             angleDiff += 360;
          }
          //Debug.Log(v + " " + vecNeighbor + " : dirs from" + dirFrom + " next" + dirNext + " " + (angleDiff));
-         if (angleDiff != 0 && angleDiff < minAngle) {
+         if (angleDiff != 0 && angleDiff < minAngle && v != vecNeighbor) {
             minAngle = angleDiff;
             nextVec = vecNeighbor;
          }
