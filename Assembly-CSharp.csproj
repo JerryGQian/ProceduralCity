@@ -194,6 +194,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Algorithm\Incremental.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\IFileFormat.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TrianglePool.cs" />
+    <Compile Include="Assets\Scripts\RoadMeshRenderer.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanDemo\MyFeature.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Polygon.cs" />
     <Compile Include="Assets\Scripts\WorldBuilder.cs" />
@@ -201,7 +202,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
-    <Compile Include="Assets\Scripts\RoadMeshRenderer.cs" />
+    <Compile Include="Assets\Scripts\Settings.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />

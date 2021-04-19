@@ -11,6 +11,42 @@ public static class Util {
 
    private static Vector2 angleBase = new Vector2(1, 0);
 
+   // sorts list of neighbors around core based on angle order
+   public static List<Vector2> SortNeighbors(List<Vector2> list, Vector2 core) {
+      List<Vector2> neighbors = new List<Vector2>(list); // shallow copy
+      List<Vector2> sortedNeighbors = new List<Vector2>();
+      if (neighbors.Count == 0) return sortedNeighbors;
+      // Init search
+      sortedNeighbors.Add(neighbors[0]);
+      neighbors.RemoveAt(0);
+      while (neighbors.Count > 0) { // for all neighbors
+         Vector2 v = sortedNeighbors[sortedNeighbors.Count - 1];
+         Vector2 dirFrom = v - core;
+         float minDiff = 361f;
+         Vector2 minNeighbor = Vector2.zero;
+         int minIdx = 0;
+         for (int i = 0; i < neighbors.Count; i++) {
+            Vector2 n = neighbors[i];
+            Vector2 dirNext = n - core;
+            var sign = Mathf.Sign(dirNext.x * dirFrom.y - dirNext.y * dirFrom.x);
+            float angleDiff = sign * Vector2.Angle(dirFrom, dirNext);
+            if (angleDiff < 0) {
+               angleDiff += 360;
+            }
+            if (angleDiff < minDiff) {
+               minDiff = angleDiff;
+               minNeighbor = n;
+               minIdx = i;
+            }
+         }
+         if (minDiff < 361f) {
+            sortedNeighbors.Add(minNeighbor);
+            neighbors.RemoveAt(minIdx);
+         }
+      }
+      return sortedNeighbors;
+   }
+
    // sorts based on an axis : "x" = true, "y" = false
    public static ArrayList SortVecArrayList(ArrayList list, bool axis) {
       ArrayList newList = new ArrayList();
@@ -41,6 +77,26 @@ public static class Util {
       return newList;
    }
 
+   public static float CalcAngle(Vector2 dirPrev, Vector2 dirNext) {
+      var sign = Mathf.Sign(dirNext.x * dirPrev.y - dirNext.y * dirPrev.x);
+      float angle = sign * Vector2.Angle(dirNext, dirPrev); // TODO CHECK SIGN APPLY 360!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      if (angle < 0) {
+         angle += 360;
+      }
+      return angle;
+   }
+
+   public static Vector2 Rotate(this Vector2 v, float degrees) {
+      float sin = Mathf.Sin(degrees * Mathf.Deg2Rad);
+      float cos = Mathf.Cos(degrees * Mathf.Deg2Rad);
+
+      float tx = v.x;
+      float ty = v.y;
+      v.x = (cos * tx) - (sin * ty);
+      v.y = (sin * tx) + (cos * ty);
+      return v;
+   }
+
    public static float Angle2Radians(float angle) {
       return (Mathf.PI / 180) * angle;
    }
@@ -49,6 +105,13 @@ public static class Util {
       string s = "";
       for (int i = 0; i < list.Count; i++) {
          s += list[i] + ", ";
+      }
+      return s;
+   }
+   public static string List2String(List<Vector2> list) {
+      string s = "";
+      foreach (Vector2 v in list) {
+         s += v + ", ";
       }
       return s;
    }

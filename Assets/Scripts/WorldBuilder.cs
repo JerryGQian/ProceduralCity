@@ -9,6 +9,7 @@ public class WorldBuilder : MonoBehaviour {
    public WorldManager wm;
    public GameObject indicator; // for visualization
    public GameObject yellowCube;
+   public GameObject orangeCube;
    public GameObject purpleCube;
    public GameObject blueCube;
    public GameObject chunkMeshPrefab;
@@ -182,13 +183,14 @@ public class WorldBuilder : MonoBehaviour {
             );
             segment.name = "ArterialSeg " + edge.Item1 + " " + edge.Item2;
             Transform trans = segment.GetComponent<Transform>();
-            trans.localScale = new Vector3(dist, 1, 2); //topDownVec.magnitude
-
+            trans.localScale = new Vector3(dist, 1, 2);
          }
-
-
-
       }
+   }
+
+   public void BuildAreaDebug(Area area) {
+      BuildAreaSeeds(area.seeds);
+      BuildAreaIntersections(area);
    }
 
    public void BuildAreaSeeds(List<(Vector2, float)> seeds) {
@@ -201,54 +203,27 @@ public class WorldBuilder : MonoBehaviour {
       }
    }
 
+   public void BuildAreaIntersections(Area area) {
+      HashSet<int> intersections = area.intersections;
+      foreach (int id in intersections) {
+         Vector2 v = area.Id2Val(id);
+         GameObject obj = Instantiate(orangeCube, new Vector3(v.x, TerrainGen.GenerateTerrainAt((int)v.x, (int)v.y), v.y), Quaternion.identity);
+         obj.name = "AreaIntersection " + v;
+         Transform trans = obj.GetComponent<Transform>();
+         trans.localScale = new Vector3(1.5f, 2, 1.5f);
+      }
+   }
+
    public void BuildAreaLocal(Area a) {
       string areaName = a.ToString();
       GameObject areaObj = new GameObject("Area " + areaName);
-      //List<((Vector2, Vector2), bool)> localSegments = a.localSegmentsPending;
 
       GameObject roadMesh = Instantiate(roadMeshPrefab, new Vector3(0, 0, 0), Quaternion.identity);
       roadMesh.transform.SetParent(areaObj.transform);
       RoadMeshRenderer renderer = roadMesh.GetComponent<RoadMeshRenderer>();
       renderer.BuildMesh(a.localSegments, 1f);
       roadMeshes[areaName] = roadMesh;
-      /*foreach (((Vector2, Vector2), bool) seg in localSegments) {
-         Vector2 P0 = seg.Item1.Item1;
-         Vector2 P1 = seg.Item1.Item2;
-
-         // Path disconnect if signal, skip 2 segments!
-         if (P0 == SignalVector || P1 == SignalVector) {
-            continue;
-         }
-
-         Vector2 topDownVec = new Vector2(P1.x - P0.x, P1.y - P0.y);
-         // 3D version of points with terrain height
-         Vector3 P0_3 = new Vector3(P0.x, TerrainGen.GenerateTerrainAt((int)P0.x, (int)P0.y), P0.y);
-         Vector3 P1_3 = new Vector3(P1.x, TerrainGen.GenerateTerrainAt((int)P1.x, (int)P1.y), P1.y);
-         float dist = (P0_3 - P1_3).magnitude;
-         float incline = Mathf.Atan2(topDownVec.magnitude, P0_3.y - P1_3.y) * Mathf.Rad2Deg + 90;
-
-         float x = (float)(P0.x + P1.x) / 2;
-         float y = (float)(P0.y + P1.y) / 2;
-
-
-         float angle = Mathf.Atan2(P1.x - P0.x, P1.y - P0.y) * Mathf.Rad2Deg + 90;
-
-         float objHeight = (TerrainGen.GenerateTerrainAt((int)P0_3.x, (int)P0_3.z) + TerrainGen.GenerateTerrainAt((int)P1_3.x, (int)P1_3.z)) / 2;
-         if (objHeight < 0) {
-            objHeight = 1f;
-         }
-         GameObject segment = Instantiate(yellowCube, new Vector3(x, objHeight, y), Quaternion.AngleAxis(angle, Vector3.up));
-         segment.transform.eulerAngles = new Vector3(
-             segment.transform.eulerAngles.x,
-             angle + 180,
-             incline
-         );
-         segment.name = "LocalSeg " + P0 + " " + P1;
-         Transform trans = segment.GetComponent<Transform>();
-         trans.localScale = new Vector3(dist, 1, 1);
-         trans.SetParent(areaObj.transform);
-      }*/
-      //Debug.Log("built Area: " + areaName);
+      
       builtAreas[areaName] = areaObj;
    }
 

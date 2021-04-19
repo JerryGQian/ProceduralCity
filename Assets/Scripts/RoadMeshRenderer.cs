@@ -21,7 +21,7 @@ public class RoadMeshRenderer : MonoBehaviour {
 
    // Builds mesh out of chunk data
    public void BuildMesh(List<(Vector2, Vector2)> segments, float width) {
-      Debug.Log("BuildMesh: " + segments.Count);
+      //Debug.Log("BuildMesh: " + segments.Count);
       CreateShape(segments, width);
       //StartCoroutine(CreateShape(chunk));
       UpdateMesh(segments);
@@ -43,8 +43,8 @@ public class RoadMeshRenderer : MonoBehaviour {
          Vector2 v3 = seg.Item2 + width/2 * orth;
          //Debug.Log(v0 + " " + v1 + " " + v2 + " " + v3);
 
-         float height1 = TerrainGen.GenerateTerrainAt((int)seg.Item1.x, (int)seg.Item1.y) + 0.2f;
-         float height2 = TerrainGen.GenerateTerrainAt((int)seg.Item2.x, (int)seg.Item2.y) + 0.2f;
+         float height1 = TerrainGen.GenerateTerrainAt((int)seg.Item1.x, (int)seg.Item1.y) + 0.25f;
+         float height2 = TerrainGen.GenerateTerrainAt((int)seg.Item2.x, (int)seg.Item2.y) + 0.25f;
 
          vertices[i]     = new Vector3(v0.x, height1, v0.y);
          vertices[i + 1] = new Vector3(v1.x, height1, v1.y);

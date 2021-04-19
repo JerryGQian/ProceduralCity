@@ -27,6 +27,7 @@ public class TerrainGen {
 
 
    // DENSITY CALCS
+
    public static float CalculateDensityAtChunk(Vector2Int chunkIdx) {
       Vector2 w = Util.C2W(chunkIdx);
       return CalculateDensityAt(new Vector2Int((int)w.x, (int)w.y));

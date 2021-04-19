@@ -30,6 +30,8 @@ public class ArterialGenerator {
    // map from regionIdx to list of ChainStarts(highway exit position and highway angle) 
    private Dictionary<Vector2Int, List<ChainStart>> highwayChainStartsByRegion = new Dictionary<Vector2Int, List<ChainStart>>();
    private Dictionary<Vector2Int, List<ChainStart>> boundaryChainStartsByRegion = new Dictionary<Vector2Int, List<ChainStart>>();
+   private HashSet<Vector2> chainStartSet = new HashSet<Vector2>();
+   private HashSet<Vector2> boundaryChainStartSet = new HashSet<Vector2>();
    public ArrayList edges;
    public ArrayList arterialEdges = new ArrayList();
    private Dictionary<Vector2, ArrayList> regionToVertices = new Dictionary<Vector2, ArrayList>();
@@ -160,8 +162,8 @@ public class ArterialGenerator {
    private void GenRegionLayout(Vector2Int idx) {
       Bounds thisBounds = WorldManager.regions[idx].bounds;
       // gen arterial points for each region
-      for (int x = (int)thisBounds.xMin + WorldManager.chunkSize / 2; x < thisBounds.xMax; x += initSpacingInChunks * WorldManager.chunkSize) {
-         for (int y = (int)thisBounds.zMin + WorldManager.chunkSize / 2; y < thisBounds.zMax; y += initSpacingInChunks * WorldManager.chunkSize) {
+      for (int x = (int)thisBounds.xMin + initSpacingInChunks * WorldManager.chunkSize; x < thisBounds.xMax; x += initSpacingInChunks * WorldManager.chunkSize) {
+         for (int y = (int)thisBounds.zMin + initSpacingInChunks * WorldManager.chunkSize; y < thisBounds.zMax; y += initSpacingInChunks * WorldManager.chunkSize) {
             Vector2 point = new Vector2(x, y);
             // adjustment away from highways
             point += CalcPointAdjustment(point);
@@ -206,22 +208,10 @@ public class ArterialGenerator {
                Vector2 vDirection2 = -vDirection1;
                highwayChainStartsByRegion[idx].Add(new ChainStart(v, vDirection1));
                highwayChainStartsByRegion[idx].Add(new ChainStart(v, vDirection2));
+               chainStartSet.Add(v);
             }
          }
       }
-
-      /*// add randomness and adjustment from proximity to highways
-      foreach (Vector2 point in arterialPoints) {
-         if (!TerrainGen.IsWaterAt(point) && innerPatchBounds.InBounds(point)) {
-            if (arterialPointsByRegion.ContainsKey(regionIdx)) {
-               arterialPointsByRegion[regionIdx].Add(point);
-            }
-            else {
-               arterialPointsByRegion[regionIdx] = new ArrayList() { point };
-            }
-            //arterialPoints.Add(newPoint);
-         }
-      }*/
 
       // Build arterial graph
       var points = new List<Vertex>();
@@ -264,9 +254,12 @@ public class ArterialGenerator {
          Vector2 vec1 = Util.VertexToVector2(v1);
          (Vector2, Vector2) tup1 = (vec0, vec1);
          (Vector2, Vector2) tup2 = (vec1, vec0);
+         float length = (vec0 - vec1).magnitude;
 
          if (!WorldManager.edgeState.ContainsKey(tup1)) { //needs removal check
-            if (IsFullHighwayEdge(tup1)) { //  || (vec0 - vec1).magnitude > 100
+            Vector2 mid = (vec0 + vec1) / 2;
+            if (IsFullHighwayEdge(tup1) || 
+               (length > 100 && TerrainGen.CalculateDensityAt(new Vector2Int((int)mid.x, (int)mid.y)) < 0.15f) && (!boundaryChainStartSet.Contains(vec0) || !boundaryChainStartSet.Contains(vec1))) { //  || (vec0 - vec1).magnitude > 100
                // remove edge for first time
                WorldManager.edgeState[tup1] = false;
                WorldManager.edgeState[tup2] = false;
@@ -275,7 +268,6 @@ public class ArterialGenerator {
             }
 
             // remove if middle is on water
-            Vector2 mid = (vec0 + vec1) / 2;
             if (TerrainGen.IsWaterAt(mid)) {
                RemoveEdge(tup1);
             }
@@ -289,7 +281,6 @@ public class ArterialGenerator {
             }
          }
       }
-
 
       // #########################################################
 
@@ -373,6 +364,7 @@ public class ArterialGenerator {
       switch (side) {
          case 'N':
             list = GenRegionBoundarySeedsUniform(idx + Vector2Int.up, 'S');
+            dir = Vector2.down;
             break;
          case 'W':
             list = GenRegionBoundarySeedsUniform(idx, 'W');
@@ -384,7 +376,7 @@ public class ArterialGenerator {
             break;
          case 'E':
             list = GenRegionBoundarySeedsUniform(idx + Vector2Int.left, 'W');
-            dir = Vector2.left;
+            dir = Vector2.right;
             break;
       }
 
@@ -393,6 +385,8 @@ public class ArterialGenerator {
          arterialPointsByRegion[idx].Add(v);
          ChainStart newSeed = new ChainStart(v, dir);
          boundaryChainStartsByRegion[idx].Add(newSeed);
+         chainStartSet.Add(v);
+         boundaryChainStartSet.Add(v);
       }
    }
 
@@ -419,29 +413,32 @@ public class ArterialGenerator {
 
       CoordRandom cr = new CoordRandom(idx);
       int[] count = new int[2];
-      count[0] = cr.Next(1, 4);
-      count[1] = cr.Next(1, 4);
+      count[0] = cr.Next(4, 6);
+      count[1] = cr.Next(4, 6);
 
-      // wastes count[0] num of random offsets if we are gening for South
+      // wastes wasteBuffer num of random offsets if we are gening for South
+      int wasteBuffer = 50;
       if (countIdx == 1) {
-         for (int i = 0; i < count[0]; i++) {
+         for (int i = 0; i < wasteBuffer; i++) {
             cr.Next(0, WorldManager.chunkSize * WorldManager.regionDim);
          }
       }
+      int redos = 0;
       for (int i = 0; i < count[countIdx]; i++) {
-         int offset = cr.Next(0, WorldManager.chunkSize * WorldManager.regionDim);
+         int offset = cr.Next(10, WorldManager.chunkSize * WorldManager.regionDim - 10);
          Vector2 newSeedV = basePoint + offset * offsetDir;
          // check if seed too close to existing seeds
-         /*bool redo = false;
-         foreach (ChainStart cs in boundaryChainStartsByRegion[idx]) {
-            if ((cs.v - newSeedV).magnitude < 15) {
-               redo = true;
+         if (redos < wasteBuffer - 1) { // if not too many redos
+            bool redo = false;
+            foreach (Vector2 existingV in list) {
+               if ((existingV - newSeedV).magnitude < 25) redo = true;
+            }
+            if (redo) {
+               i--;
+               redos++;
+               continue;
             }
          }
-         if (redo) {
-            i--;
-            continue;
-         }*/
          // add newly found seed
          list.Add(newSeedV);
       }
@@ -449,13 +446,15 @@ public class ArterialGenerator {
    }
 
    private void GenNetworkFromSeeds(Vector2Int idx) {
+      //Debug.Log("Gening for idx: " + idx);
       List<ChainStart> boundarySeeds = boundaryChainStartsByRegion[idx];
       List<ChainStart> highwaySeeds = highwayChainStartsByRegion[idx];
       boundarySeeds.Sort();
       highwaySeeds.Sort();
 
-      Queue<(Vector2, Vector2)> queue = new Queue<(Vector2, Vector2)>();
-      HashSet<(Vector2, Vector2)> visited = new HashSet<(Vector2, Vector2)>();
+      Queue<Vector2> queue = new Queue<Vector2>();
+      HashSet<Vector2> visited = new HashSet<Vector2>();
+      HashSet<Vector2> seedSet = new HashSet<Vector2>();
 
       // for initial seed non-selected removal
       Dictionary<Vector2, List<Vector2>> highwaySelection = new Dictionary<Vector2, List<Vector2>>();
@@ -468,6 +467,8 @@ public class ArterialGenerator {
       seeds.AddRange(highwaySeeds);
       // enqueue from seeds
       foreach (ChainStart cs in seeds) {
+         seedSet.Add(cs.v);
+
          // finds closest matching neighbor
          float minDiff = 181;
          Vector2 minVec = Vector2.zero;
@@ -482,45 +483,208 @@ public class ArterialGenerator {
          }
          if (minDiff < 181) { // only if found
             (Vector2, Vector2) tup = (cs.v, minVec);
-            queue.Enqueue(tup);
-            visited.Add(tup);
-            visited.Add((tup.Item2, tup.Item1));
+            queue.Enqueue(minVec);
+            visited.Add(minVec);
+
+            if (highwaySelection.ContainsKey(minVec)) { //if selected is hw
+
+            }
+
             // remove non-added edges
             // highway check to see if both sides have been added before performing removal
+            List<(Vector2, Vector2)> toRemove = new List<(Vector2, Vector2)>();
             if (highwaySelection.ContainsKey(cs.v)) {
                highwaySelection[cs.v].Add(minVec);
                if (highwaySelection[cs.v].Count >= 2) {
                   foreach (Vector2 neighborVec in neighbors[cs.v]) {
                      bool remove = true;
                      foreach (Vector2 selected in highwaySelection[cs.v]) {
-                        if (neighborVec == selected) {
+                        if (neighborVec == selected || neighbors[neighborVec].Count > 2) {
                            remove = false;
                            break;
                         }
                      }
                      if (remove) {
-                        RemoveEdge(tup);
+                        //Debug.Log("removing initHW " + cs.v + " " + minVec + " removing:" + neighborVec);
+                        toRemove.Add((cs.v, neighborVec));
                      }
                   }
                }
             }
-            else { // if not highway
+            else { // if boundary seed
                foreach (Vector2 neighborVec in neighbors[cs.v]) {
-                  if (neighborVec != minVec) {
-                     RemoveEdge(tup);
+                  if (neighborVec != minVec
+                     && WorldManager.regions[idx].bounds.InBounds(neighborVec)
+                     && neighbors[neighborVec].Count > 2) {
+                     //Debug.Log("removing initB " + cs.v + " " + minVec + " removing:" + neighborVec + " " + idx + " " + Util.W2R(neighborVec));
+                     toRemove.Add((cs.v, neighborVec));
                   }
                }
+            }
+            foreach ((Vector2, Vector2) t in toRemove) {
+               RemoveEdge(t);
             }
          }
       }
 
       // bfs to remove unwanted edges
       while (queue.Count > 0) {
-         (Vector2, Vector2) tup = queue.Dequeue();
-         Vector2 src = tup.Item1;
-         Vector2 cur = tup.Item2;
+         Vector2 cur = queue.Dequeue();
+         List<Vector2> sortedCurNeighbors = Util.SortNeighbors(neighbors[cur], cur);
+         //Debug.Log("cur: " + cur + "   sorted: " + Util.List2String(sortedNeighbors));
 
+         int canRemove = neighbors[cur].Count - 4;
+         List<(Vector2, Vector2)> toRemove = new List<(Vector2, Vector2)>();
+         // loops through every other, then back through skipped
+         for (int i = 0; i < sortedCurNeighbors.Count; i += 2) {
+            Vector2 n = sortedCurNeighbors[i]; // cur -> n
+            if (canRemove <= 0 || seedSet.Contains(cur) || seedSet.Contains(n)) {
+               //Debug.Log("Break! " + cur + " " + n + " " + seedSet.Contains(cur) + " " + seedSet.Contains(n) + " " + neighbors[cur].Count);
+               break;
+            }
+
+            // angle check on source (cur)
+            int prevIdxSource = i == 0 ? sortedCurNeighbors.Count - 1 : i - 1;
+            int nextIdxSource = i == sortedCurNeighbors.Count - 1 ? 0 : i + 1;
+
+            Vector2 dirPrevSource = sortedCurNeighbors[prevIdxSource] - cur;
+            Vector2 dirNextSource = sortedCurNeighbors[nextIdxSource] - cur;
+            var signSource = Mathf.Sign(dirNextSource.x * dirPrevSource.y - dirNextSource.y * dirPrevSource.x);
+            float angleSource = signSource * Vector2.Angle(dirPrevSource, dirNextSource);
+            if (angleSource < 0) {
+               angleSource += 360;
+            }
+            if (angleSource > 180) continue;
+
+            // angle check on destination
+            if (neighbors[n].Count <= 2) continue; // check is enough edges to remove
+            List<Vector2> sortedNeighbors = Util.SortNeighbors(neighbors[n], n);
+            int selfIdx = sortedNeighbors.IndexOf(cur);
+            int prevIdx = selfIdx == 0 ? sortedNeighbors.Count - 1 : selfIdx - 1;
+            int nextIdx = selfIdx == sortedNeighbors.Count - 1 ? 0 : selfIdx + 1;
+
+            Vector2 dirPrev = sortedNeighbors[prevIdx] - n;
+            Vector2 dirNext = sortedNeighbors[nextIdx] - n;
+            var signDest = Mathf.Sign(dirNext.x * dirPrev.y - dirNext.y * dirPrev.x);
+            float angle = signDest * Vector2.Angle(dirPrev, dirNext);
+            if (angle < 0) {
+               angle += 360;
+            }
+
+            if (angle < 180) {
+               toRemove.Add((cur, n));
+               canRemove--;
+            }
+            if (i >= sortedCurNeighbors.Count - 2 && i % 2 == 0) {
+               i = 1;
+            }
+         }
+         foreach ((Vector2, Vector2) t in toRemove) {
+            //Debug.Log("Removing: " + t.Item1 + " " + t.Item2);
+            RemoveEdge(t);
+         }
+
+         // Enqueue
+         foreach (Vector2 v in neighbors[cur]) {
+            if (!visited.Contains(v) && WorldManager.regions[idx].bounds.InBounds(v)) {
+               queue.Enqueue(v);
+               visited.Add(v);
+            }
+         }
+
+
+
+         //(Vector2, Vector2) tup = queue.Dequeue();
+         //Vector2 src = tup.Item1;
+         //Vector2 cur = tup.Item2;
+
+         /*ArrayList scores = new ArrayList();
+         ArrayList topVecs = new ArrayList();
+
+         foreach (Vector2 neighborVec in neighbors[cur]) {
+            if (neighborVec != src) {
+               float score = CalcVertScore(cur, neighborVec, visited);
+               for (int i = 0; i < 3; i++) {
+                  if (scores.Count < i + 1) {
+                     scores.Add(score);
+                     topVecs.Add(neighborVec);
+                     break;
+                  }
+                  else {
+                     if (score > (float)scores[i]) {
+                        scores.Insert(i, score);
+                        topVecs.Insert(i, neighborVec);
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+         Debug.Log("Src: " + src + " Cur: " + cur + " " + neighbors[cur].Count + " ---> " + Util.List2String(topVecs));
+         Debug.Log("scores ---> " + Util.List2String(scores));
+         List<(Vector2, Vector2)> toRemove = new List<(Vector2, Vector2)>();
+         if (neighbors[cur].Count > 4) {
+            int canRemove = neighbors[cur].Count - 4;
+            foreach (Vector2 neighborVec in neighbors[cur]) {
+               if (canRemove > 0 && CalcVertScore(cur, neighborVec, visited) < 20) {
+                  toRemove.Add((cur, neighborVec));
+                  canRemove--;
+               }
+               if (neighborVec != src) {
+                  bool remove = true;
+                  for (int i = 0; i < 3; i++) {
+                     if ((Vector2)topVecs[i] == neighborVec) {
+                        remove = false;
+                        break;
+                     }
+                  }
+                  if (remove) {
+                     toRemove.Add((cur, neighborVec));
+                     //RemoveEdge((cur, neighborVec));
+                  }
+               }
+            }
+         }
+         Debug.Log(toRemove.Count);
+         foreach ((Vector2, Vector2) t in toRemove) {
+            Debug.Log("Removing: " + t);
+            RemoveEdge(t);
+         }
+         // Enqueue
+         for (int i = 0; i < Mathf.Min(3, topVecs.Count); i++) {
+            Vector2 v = (Vector2)topVecs[i];
+            foreach (Vector2 neighborVec in neighbors[v]) {
+               (Vector2, Vector2) t = (v, neighborVec);
+               if (!visited.Contains(t)) {
+                  queue.Enqueue(t);
+                  visited.Add(t);
+                  visited.Add((t.Item2, t.Item1));
+               }
+            }
+         }*/
       }
+   }
+
+   private float CalcVertScore(Vector2 src, Vector2 v, HashSet<(Vector2, Vector2)> visited) {
+      float score = 0;
+
+      int count = neighbors[v].Count;
+      if (count <= 2) {
+         score += 100;
+      }
+      else if (count == 3) { // if at most a T intersection, try to keep 
+         score += 20;
+      }
+
+      foreach (Vector2 neighborVec in neighbors[v]) {
+         if (neighborVec != src) {
+
+            if (visited.Contains((v, neighborVec))) {
+               score += 4f;
+            }
+         }
+      }
+      return score;
    }
 
    private void SpawnBackboneChains(Vector2Int idx) {
@@ -616,33 +780,7 @@ public class ArterialGenerator {
             }
          }
       }
-      /*for (int i = 0; i < ends1.Count; i++) {
-         //foreach (Vector2 v1 in ends1) {
-         Vector2 v1 = (Vector2)ends1[i];
-         //Debug.Log(" ends1 count: " + ends1.Count + " " + v1);
-         float minDist = 999999;
-         Vector2 minVec = new Vector2(0, 0);
-         //Debug.Log("ends2 count: " + ends2.Count + " " + v1);
-         foreach (Vector2 v2 in ends2) {
-            //Debug.Log(" ends2: " + v2);
-            float dist = (v1 - v2).magnitude;
-            if (dist < minDist) {
-               minDist = dist;
-               minVec = v2;
-            }
-         }
-         Vector2 mid = (v1 + minVec) / 2;
-         //Debug.Log(!(patchHighwaysSet.Contains(v1) && patchHighwaysSet.Contains(minVec)));
-         if (minDist < 100 && !TerrainGen.IsWaterAt(mid) && !(patchHighwaysSet.Contains(v1) && patchHighwaysSet.Contains(minVec))) {
-            if (!backboneEdges.Contains((v1, minVec)) && !backboneEdges.Contains((minVec, v1))) {
-               edges.Add((v1, minVec));
-               backboneEdges.Add((v1, minVec));
-               backboneEdges.Add((minVec, v1));
-            }
-         }
 
-         ends2.Remove(minVec);
-      }*/
 
    }
 
@@ -666,7 +804,6 @@ public class ArterialGenerator {
             }
          }
       }
-
       return false;
    }
 
@@ -707,6 +844,8 @@ public class ArterialGenerator {
 
    private void RemoveEdge((Vector2, Vector2) e) {
       (Vector2, Vector2) e2 = (e.Item2, e.Item1);
+      neighbors[e.Item1].Remove(e.Item2);
+      neighbors[e.Item2].Remove(e.Item1);
       for (int i = 0; i < edges.Count; i++) {
          if (Util.SameEdge(((Vector2, Vector2))edges[i], e) || Util.SameEdge(((Vector2, Vector2))edges[i], e2)) {
             edges.RemoveAt(i);
