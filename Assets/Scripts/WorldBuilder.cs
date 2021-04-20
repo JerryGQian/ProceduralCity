@@ -4,6 +4,7 @@ using UnityEngine;
 using TriangleNet.Geometry;
 using TriangleNet.Meshing;
 using TriangleNet.Meshing.Algorithm;
+using csDelaunay;
 
 public class WorldBuilder : MonoBehaviour {
    public WorldManager wm;
@@ -32,7 +33,7 @@ public class WorldBuilder : MonoBehaviour {
 
    public void BuildHighway(HighwayGenerator hwg, Vector2Int regionIdx) {
       ArrayList vert = new ArrayList();
-      foreach (Vertex v in hwg.vertices) {
+      foreach (TriangleNet.Geometry.Vertex v in hwg.vertices) {
          vert.Add(v);
       }
 
@@ -62,9 +63,9 @@ public class WorldBuilder : MonoBehaviour {
 
 
       if (false) {
-         foreach (Edge e in hwg.edges) {
-            Vector2 P0 = new Vector2((float)((Vertex)vert[e.P0]).X, (float)((Vertex)vert[e.P0]).Y);
-            Vector2 P1 = new Vector2((float)((Vertex)vert[e.P1]).X, (float)((Vertex)vert[e.P1]).Y);
+         foreach (TriangleNet.Geometry.Edge e in hwg.edges) {
+            Vector2 P0 = new Vector2((float)((TriangleNet.Geometry.Vertex)vert[e.P0]).X, (float)((TriangleNet.Geometry.Vertex)vert[e.P0]).Y);
+            Vector2 P1 = new Vector2((float)((TriangleNet.Geometry.Vertex)vert[e.P1]).X, (float)((TriangleNet.Geometry.Vertex)vert[e.P1]).Y);
 
             //if (wm.regions[regionIdx].bounds.InBounds(P0) || wm.regions[regionIdx].bounds.InBounds(P1)) {
             if (InPatchBounds(regionIdx, P0, P1)) {
@@ -223,9 +224,66 @@ public class WorldBuilder : MonoBehaviour {
       RoadMeshRenderer renderer = roadMesh.GetComponent<RoadMeshRenderer>();
       renderer.BuildMesh(a.localSegments, 1f);
       roadMeshes[areaName] = roadMesh;
-      
+
       builtAreas[areaName] = areaObj;
    }
+
+   public void BuildAreaBlocks(Area a) {
+      foreach (Block b in a.blocks) {
+         //b.voronoi;
+         foreach (Vector2 v in b.corners) {
+            GameObject obj = Instantiate(
+                    orangeCube,
+                    new Vector3(v.x, 10, v.y),
+                    Quaternion.AngleAxis(0, Vector3.up));
+            Transform trans = obj.GetComponent<Transform>();
+            trans.localScale = new Vector3(1.5f, 1.5f, 1.5f);
+         }
+         foreach (KeyValuePair<Vector2f, Site> kv in b.sites) {
+            GameObject obj = Instantiate(
+                    purpleCube,
+                    new Vector3(kv.Key.x, 10, kv.Key.y),
+                    Quaternion.AngleAxis(0, Vector3.up));
+            Transform trans = obj.GetComponent<Transform>();
+            trans.localScale = new Vector3(1, 5, 1);
+            
+         }
+         foreach (csDelaunay.Edge edge in b.edges) {
+            // if the edge doesn't have clippedEnds, if was not within the bounds, dont draw it
+            //Debug.Log(edge.ClippedEnds[LR.LEFT] + " " +  edge.ClippedEnds[LR.RIGHT]);
+            if (edge.ClippedEnds == null) continue;
+            GenPlotEdge(edge.ClippedEnds[LR.LEFT], edge.ClippedEnds[LR.RIGHT]);
+            /*if (edge != null && edge.LeftVertex != null && edge.RightVertex != null)
+               GenPlotEdge(new Vector2f(edge.LeftVertex.x, edge.LeftVertex.y),
+                  new Vector2f(edge.RightVertex.x, edge.RightVertex.y));*/
+         }
+      }
+   }
+   private void GenPlotEdge(Vector2f p0, Vector2f p1) {
+      Debug.Log(p0 + " " + p1);
+      float x0 = p0.x;
+      float y0 = 0;// p0.y;
+      float x1 = p1.x;
+      float y1 = 0;// p1.y;
+
+      float x = (float)(x0 + x1) / 2;
+      float y = (float)(y0 + y1) / 2;
+      //Debug.Log(x + " " + y + " ... " + y0 + " " + y1);
+
+      Vector2 vec = new Vector2(x1 - x0, y1 - y0);
+
+      float angle = Mathf.Atan2(x1 - x0, y1 - y0) * Mathf.Rad2Deg + 90;
+
+      GameObject obj = Instantiate(
+                    orangeCube,
+                    new Vector3(x, 0, y),
+                    Quaternion.AngleAxis(angle, Vector3.up));
+      Transform trans = obj.GetComponent<Transform>();
+
+      trans.localScale = new Vector3(vec.magnitude, 1, .5f);
+   }
+
+
 
    public void DestroyDistantAreas(List<Area> currAreas) {
       HashSet<string> currAreasSet = new HashSet<string>();

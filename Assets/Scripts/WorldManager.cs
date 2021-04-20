@@ -301,6 +301,7 @@ public class WorldManager : MonoBehaviour {
             }
             //wb.BuildAreaDebug(actualArea);
             wb.BuildAreaLocal(actualArea);
+            wb.BuildAreaBlocks(actualArea);
          }
       }
       

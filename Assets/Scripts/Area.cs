@@ -618,10 +618,15 @@ public class Area {
       foreach (int id in intersections) {
          intersectionList.Add(Id2Val(id));
       }
-      List<Block> blocks = BlockFinder.FindBlocks(roadGraph, intersectionList);
+      blocks = BlockFinder.FindBlocks(roadGraph, intersectionList, primaryDir, secondaryDir);
       Debug.Log("Blocks: " + blocks.Count);
       if (blocks.Count > 0) Debug.Log("Block: " + blocks[0].ToString());
-
+      
+      // gens plots and buildings
+      foreach (Block b in blocks) {
+         b.GenBlock();
+      }
+      //TODO
    }
 
 

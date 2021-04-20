@@ -3,19 +3,30 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class BlockFinder {
-   public static List<Block> FindBlocks(Dictionary<Vector2, HashSet<Vector2>> localGraph, List<Vector2> intersections) {
+   public static List<Block> FindBlocks(Dictionary<Vector2, HashSet<Vector2>> localGraph, List<Vector2> intersections, float primaryDir, float secondaryDir) {
       List<Block> blocks = new List<Block>();
+      List<Vector2> searchSrc = new List<Vector2>(intersections);
+
+      // TODO sometimes no intersections, also need to add general srcs (every third)
+      HashSet<Vector2> intersectionSet = new HashSet<Vector2>(intersections); // to not double add
+      int i = 1;
+      foreach (KeyValuePair<Vector2, HashSet<Vector2>> pair in localGraph) {
+         if (i % 3 == 0) {
+            if (!intersectionSet.Contains(pair.Key)) searchSrc.Add(pair.Key);
+         }
+         i++;
+      }
 
       // (intersection center, intersection child edge)
       HashSet<(Vector2, Vector2)> explored = new HashSet<(Vector2, Vector2)>();
       // for each intersection
-      foreach (Vector2 intV in intersections) {
+      foreach (Vector2 intV in searchSrc) {
          foreach (Vector2 childV in localGraph[intV]) {
             (Vector2, Vector2) srcTup = (intV, childV);
             if (!explored.Contains(srcTup)) {
                explored.Add(srcTup);
 
-               Block block = SearchBlockBidirectional(localGraph, intV, childV);
+               Block block = SearchBlockBidirectional(localGraph, intV, childV, primaryDir, secondaryDir);
                bool alreadyFound = false;
                foreach (Block b in blocks) {
                   if (block.IsSame(b)) {
@@ -33,7 +44,10 @@ public class BlockFinder {
    }
 
    // Spawns two search instances in opposite directions and joins results
-   private static Block SearchBlockBidirectional(Dictionary<Vector2, HashSet<Vector2>> localGraph, Vector2 source, Vector2 curr) {
+   private static Block SearchBlockBidirectional(
+      Dictionary<Vector2, HashSet<Vector2>> localGraph, 
+      Vector2 source, Vector2 curr, 
+      float primaryDir, float secondaryDir) {
       // search first direction
       ArrayList first = SearchBlock(localGraph, true, new ArrayList() { source }, curr);
 
@@ -50,7 +64,7 @@ public class BlockFinder {
             }
          }
       }
-      Block block = new Block(first);
+      Block block = new Block(first, primaryDir, secondaryDir);
       return block;
    }
 
