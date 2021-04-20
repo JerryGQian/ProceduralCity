@@ -288,7 +288,6 @@ public class WorldManager : MonoBehaviour {
       }
       wb.DestroyDistantAreas(currAreas);
       foreach (Area a in currAreas) {
-         //Debug.Log("Name: " + a.ToString());
          string areaName = a.ToString();
          currAreasSet.Add(areaName);
          if (!areas.ContainsKey(areaName)) {
@@ -297,17 +296,15 @@ public class WorldManager : MonoBehaviour {
          }
          Area actualArea = areas[areaName];
          if (!WorldBuilder.builtAreas.ContainsKey(areaName)) { 
-            //Debug.Log("Gening Area " + areaName);
             foreach (KeyValuePair<(Vector2, Vector2), ArrayList> e in actualArea.arterialSegments) {
                wb.BuildArterial(e.Key, e.Value);
             }
-            wb.BuildAreaDebug(actualArea);
+            //wb.BuildAreaDebug(actualArea);
             wb.BuildAreaLocal(actualArea);
          }
       }
       
       
-      //Debug.Log("AreasFound: " + areas.Count);
    }
 
 

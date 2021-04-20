@@ -14,6 +14,7 @@ public class Area {
    public Dictionary<(int, int), bool> localSegmentsPending = new Dictionary<(int, int), bool>();
    public List<(Vector2, Vector2)> localSegments = new List<(Vector2, Vector2)>();
    public Dictionary<Vector2, HashSet<Vector2>> localGraph = new Dictionary<Vector2, HashSet<Vector2>>();
+   public Dictionary<Vector2, HashSet<Vector2>> roadGraph;
    private int id = 0; // id counter
    private Dictionary<int, HashSet<int>> localIdGraph = new Dictionary<int, HashSet<int>>();
    private Dictionary<int, Vector2> id2val = new Dictionary<int, Vector2>();
@@ -35,6 +36,9 @@ public class Area {
    private static int chunkWidth = 3;
    private static float extendLength = 3;
    private float roadDensityThreshold = 0.2f;
+
+   // Blocks
+   public List<Block> blocks = new List<Block>();
 
    public Area(ArrayList list) {
       verts = list;
@@ -128,10 +132,8 @@ public class Area {
    public void GenArea() {
       // Get path segments for all arterial edges
       GenArterialPaths();
-
       // Find area orthogonal vector pair
       CalcOrthDirs();
-
       // Find seeds
       for (int i = 0; i < verts.Count - 1; i++) {
          GenEdgeSeeds((Vector2)verts[i], (Vector2)verts[i + 1]);
@@ -139,20 +141,16 @@ public class Area {
       if (verts.Count >= 3) {
          GenEdgeSeeds((Vector2)verts[verts.Count - 1], (Vector2)verts[0]);
       }
-      //string str = "";
       for (int i = 0; i < seeds.Count; i++) {
          Vector2 s = seeds[i].Item1;
          AddVertToChunkHash(Vector2.zero, s);
          seedSet.Add(s);
-         //str += s + ", "; 
       }
 
       Debug.Log("Area: " + ToString());
+
       GenLocalRoads();
-
-      // BUILDING PLOTS ///////////////////////////////////////////////////////////////////////////////
-      GenBuildings();
-
+      GenBlocks();
    }
 
    // Returns list of arterial edges to generate paths later
@@ -332,11 +330,14 @@ public class Area {
 
       // finalize local segments
       HashSet<(Vector2, Vector2)> localSegmentSet = new HashSet<(Vector2, Vector2)>();
+      localGraph.Clear();
       foreach (KeyValuePair<int, HashSet<int>> pair in localIdGraph) {
          int id1 = pair.Key;
          Vector2 v1 = Id2Val(id1);
+         HashSet<Vector2> set = new HashSet<Vector2>();
          foreach (int id2 in pair.Value) {
             Vector2 v2 = Id2Val(id2);
+            set.Add(v2);
             (int, int) idtup1 = (id1, id2);
             (int, int) idtup2 = (id2, id1);
             (Vector2, Vector2) tup1 = (v1, v2);
@@ -347,8 +348,38 @@ public class Area {
                localSegmentSet.Add(tup1);
             }
          }
+         localGraph.Add(Id2Val(pair.Key), set);
       }
       localSegments = new List<(Vector2, Vector2)>(localSegmentSet);
+
+      // add arterial ring to graph
+      roadGraph = new Dictionary<Vector2, HashSet<Vector2>>(localGraph);
+      for (int i = 0; i < verts.Count - 1; i++) {
+         Vector2 v1 = (Vector2)verts[i];
+         Vector2 v2 = (Vector2)verts[i + 1];
+         (Vector2, Vector2) tup = (v1, v2);
+
+         if (arterialSegments.ContainsKey(tup)) {
+            for (int j = 0; j < arterialSegments[tup].Count - 1; j++) {
+               Vector2 sv1 = (Vector2)arterialSegments[tup][j];
+               Vector2 sv2 = (Vector2)arterialSegments[tup][j + 1];
+               //(Vector2, Vector2) stup = (sv1, sv2);
+               if (!roadGraph.ContainsKey(sv1)) roadGraph.Add(sv1, new HashSet<Vector2>());
+               if (!roadGraph.ContainsKey(sv2)) roadGraph.Add(sv2, new HashSet<Vector2>());
+               /*foreach (Vector2 n in roadGraph[sv1]) {
+                  roadGraph[n].Add(sv1);
+               }*/
+               roadGraph[sv1].Add(sv2);
+               roadGraph[sv2].Add(sv1);
+            }
+         }
+         else {
+            if (!roadGraph.ContainsKey(v1)) roadGraph.Add(v1, new HashSet<Vector2>());
+            if (!roadGraph.ContainsKey(v2)) roadGraph.Add(v2, new HashSet<Vector2>());
+            roadGraph[v1].Add(v2);
+            roadGraph[v2].Add(v1);
+         }
+      }
    }
 
    // v is current pos pre-extension, angle is extension direction, dir is positivity of direction +/-1
@@ -581,9 +612,18 @@ public class Area {
       }
    }
 
-   private void GenBuildings() {
+   private void GenBlocks() {
+      // search for blocks
+      List<Vector2> intersectionList = new List<Vector2>();
+      foreach (int id in intersections) {
+         intersectionList.Add(Id2Val(id));
+      }
+      List<Block> blocks = BlockFinder.FindBlocks(roadGraph, intersectionList);
+      Debug.Log("Blocks: " + blocks.Count);
+      if (blocks.Count > 0) Debug.Log("Block: " + blocks[0].ToString());
 
    }
+
 
    ///////////////////////////////////////////////////////////////////
    // UTIL FUNCTIONS /////////////////////////////////////////////////
@@ -609,7 +649,6 @@ public class Area {
       }
       return dir;
    }
-
 
    // Local vertex ID Value link
    private int Val2Id(Vector2 v) {
@@ -719,7 +758,7 @@ public class Area {
       }
       return false;
    }
-   
+
 
    // world to area chunk (smaller than regular chunk)
    public static Vector2Int W2AC(Vector2 worldCoord) {

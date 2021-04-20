@@ -2,42 +2,47 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AreaFinder {
-   public static List<Area> FindAreas(List<Vector2> sourcePoints) {
-      List<Area> areas = new List<Area>();
-      foreach (Vector2 v in sourcePoints) {
-         foreach (Vector2 vn in WorldManager.roadGraph[v]) {
-            // start search
-            //Debug.Log("Starting... " + v + " " + vn);
-            Area area = SearchAreaBidirectional(v, vn);
-            bool alreadyFound = false;
-            foreach (Area a in areas) {
-               if (area.IsSame(a)) {
-                  alreadyFound = true;
-                  //Debug.Log("Duplicate found " + area.verts.Count);
+public class BlockFinder {
+   public static List<Block> FindBlocks(Dictionary<Vector2, HashSet<Vector2>> localGraph, List<Vector2> intersections) {
+      List<Block> blocks = new List<Block>();
+
+      // (intersection center, intersection child edge)
+      HashSet<(Vector2, Vector2)> explored = new HashSet<(Vector2, Vector2)>();
+      // for each intersection
+      foreach (Vector2 intV in intersections) {
+         foreach (Vector2 childV in localGraph[intV]) {
+            (Vector2, Vector2) srcTup = (intV, childV);
+            if (!explored.Contains(srcTup)) {
+               explored.Add(srcTup);
+
+               Block block = SearchBlockBidirectional(localGraph, intV, childV);
+               bool alreadyFound = false;
+               foreach (Block b in blocks) {
+                  if (block.IsSame(b)) {
+                     alreadyFound = true;
+                  }
                }
-            }
-            if (!alreadyFound) {
-               //Debug.Log("Area: " + area.verts.Count + " " + Util.List2String(area.verts));
-               areas.Add(area);
+               if (!alreadyFound) {
+                  blocks.Add(block);
+               }
             }
          }
       }
 
-      return areas;
+      return blocks;
    }
 
    // Spawns two search instances in opposite directions and joins results
-   private static Area SearchAreaBidirectional(Vector2 source, Vector2 curr) {
+   private static Block SearchBlockBidirectional(Dictionary<Vector2, HashSet<Vector2>> localGraph, Vector2 source, Vector2 curr) {
       // search first direction
-      ArrayList first = SearchArea(true, new ArrayList() { source }, curr);
+      ArrayList first = SearchBlock(localGraph, true, new ArrayList() { source }, curr);
 
       // search second direction
       Vector2 dirFrom = curr - source;
-      (Vector2, float) tup = ChooseNext(false, source, dirFrom);
+      (Vector2, float) tup = ChooseNext(localGraph, false, source, dirFrom);
       //Debug.Log("sec next " + tup.Item1 + " " + source);
       if (tup.Item2 != 360) {
-         ArrayList second = SearchArea(false, new ArrayList() { source }, tup.Item1);
+         ArrayList second = SearchBlock(localGraph, false, new ArrayList() { source }, tup.Item1);
          if (second.Count > 1) {
             for (int i = 1; i < second.Count; i++) {
                Vector2 v = (Vector2)second[i];
@@ -45,11 +50,11 @@ public class AreaFinder {
             }
          }
       }
-      Area area = new Area(first);
-      return area;
+      Block block = new Block(first);
+      return block;
    }
 
-   private static ArrayList SearchArea(bool dir, ArrayList history, Vector2 curr) {
+   private static ArrayList SearchBlock(Dictionary<Vector2, HashSet<Vector2>> localGraph, bool dir, ArrayList history, Vector2 curr) {
       //Debug.Log("Starting area search: " + history.Count + " " + curr);
       history.Add(curr);
 
@@ -59,19 +64,19 @@ public class AreaFinder {
       }
 
       Vector2 dirFrom = (Vector2)history[history.Count - 2] - curr;
-      (Vector2, float) tup = ChooseNext(dir, curr, dirFrom);
+      (Vector2, float) tup = ChooseNext(localGraph, dir, curr, dirFrom);
       Vector2 nextVec = tup.Item1;
       float minAngle = tup.Item2;
 
       //Debug.Log("dir: " + dir + " minAngle: " + minAngle + " from" + curr + " to" + nextVec);
 
       if (minAngle < 360f) {
-         history = SearchArea(dir, history, nextVec); //recurse
+         history = SearchBlock(localGraph, dir, history, nextVec); //recurse
       }
       return history;
    }
 
-   private static (Vector2, float) ChooseNext(bool dir, Vector2 v, Vector2 dirFrom) {
+   private static (Vector2, float) ChooseNext(Dictionary<Vector2, HashSet<Vector2>> localGraph, bool dir, Vector2 v, Vector2 dirFrom) {
       float minAngle = 360f;
       Vector2 nextVec = Vector2.zero;
       //Vector2 dirFrom = (Vector2)history[history.Count - 2] - curr;
@@ -79,7 +84,7 @@ public class AreaFinder {
       int dirSignMultiplier = dir ? 1 : -1;
 
       // pick leftmost neighbor
-      foreach (Vector2 vecNeighbor in WorldManager.roadGraph[v]) {
+      foreach (Vector2 vecNeighbor in localGraph[v]) {
          Vector2 dirNext = vecNeighbor - v;
          var sign = dirSignMultiplier * Mathf.Sign(dirNext.x * dirFrom.y - dirNext.y * dirFrom.x);
          float angleDiff = sign * Vector2.Angle(dirFrom, dirNext);
@@ -95,5 +100,4 @@ public class AreaFinder {
 
       return (nextVec, minAngle);
    }
-
 }

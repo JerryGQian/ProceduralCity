@@ -199,7 +199,7 @@ public class WorldBuilder : MonoBehaviour {
          GameObject obj = Instantiate(blueCube, new Vector3(v.x, TerrainGen.GenerateTerrainAt((int)v.x, (int)v.y), v.y), Quaternion.identity);
          obj.name = "AreaSeed " + v + " " + seed.Item2;
          Transform trans = obj.GetComponent<Transform>();
-         trans.localScale = new Vector3(4, 4, 4);
+         trans.localScale = new Vector3(2, 4, 2);
       }
    }
 
