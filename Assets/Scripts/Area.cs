@@ -14,16 +14,15 @@ public class Area {
    public Dictionary<(int, int), bool> localSegmentsPending = new Dictionary<(int, int), bool>();
    public List<(Vector2, Vector2)> localSegments = new List<(Vector2, Vector2)>();
    public Dictionary<Vector2, HashSet<Vector2>> localGraph = new Dictionary<Vector2, HashSet<Vector2>>();
-   int id = 0;
-   Dictionary<int, HashSet<int>> localIdGraph = new Dictionary<int, HashSet<int>>();
-   Dictionary<int, Vector2> id2val = new Dictionary<int, Vector2>();
-   Dictionary<Vector2, int> val2id = new Dictionary<Vector2, int>();
-   //public HashSet<Vector2> intersections = new HashSet<Vector2>();
+   private int id = 0; // id counter
+   private Dictionary<int, HashSet<int>> localIdGraph = new Dictionary<int, HashSet<int>>();
+   private Dictionary<int, Vector2> id2val = new Dictionary<int, Vector2>();
+   private Dictionary<Vector2, int> val2id = new Dictionary<Vector2, int>();
    public HashSet<int> intersections = new HashSet<int>();
-   public HashSet<int> pendingIntersections = new HashSet<int>(); // intersection set for extension phase
-
-   private float optimizationSteps = 5;
-   private float stepFraction = 0.33f;
+   private HashSet<int> pendingIntersections = new HashSet<int>(); // intersection set for extension phase
+   private HashSet<int> intersectionNeighborSet = new HashSet<int>();
+   private float optimizationSteps = 6;
+   private float stepFraction = 0.3f;
 
    // Pathfinding/Directions
    private ArterialPathfinding pathfinding = new ArterialPathfinding();
@@ -31,8 +30,8 @@ public class Area {
    private float secondaryDir;
 
    // Chunk hashes
-   public Dictionary<Vector2Int, List<(Vector2, Vector2)>> chunkHash = new Dictionary<Vector2Int, List<(Vector2, Vector2)>>();
-   public HashSet<Vector2Int> wallChunkHash = new HashSet<Vector2Int>();
+   private Dictionary<Vector2Int, List<(Vector2, Vector2)>> chunkHash = new Dictionary<Vector2Int, List<(Vector2, Vector2)>>();
+   private HashSet<Vector2Int> wallChunkHash = new HashSet<Vector2Int>();
    private static int chunkWidth = 3;
    private static float extendLength = 3;
    private float roadDensityThreshold = 0.2f;
@@ -53,6 +52,10 @@ public class Area {
       }
       bounds = new Bounds(xLim.x, yLim.x, xLim.y, yLim.y);
    }
+
+   ///////////////////////////////////////////////////////////////////
+   // CORE INTERFACE FUNCTIONS ///////////////////////////////////////
+   ///////////////////////////////////////////////////////////////////
 
    // cycles list until chosen vert is at beginning
    public void Order() {
@@ -78,10 +81,8 @@ public class Area {
             for (int i = 0; i < verts.Count - primaryIdx; i++) {
                verts[i] = verts[i + primaryIdx];
             }
-            //Debug.Log(verts.Count + " " + primaryIdx + " " + temp.Count);
             // copy over temp
             for (int i = 0; i < temp.Count; i++) {
-               //Debug.Log("loop: " + (i + primaryIdx) + " " + i);
                verts[i + verts.Count - primaryIdx] = temp[i];
             }
          }
@@ -120,6 +121,40 @@ public class Area {
       return true;
    }
 
+   ///////////////////////////////////////////////////////////////////
+   // GENERATION FUNCTIONS ///////////////////////////////////////////
+   ///////////////////////////////////////////////////////////////////
+
+   public void GenArea() {
+      // Get path segments for all arterial edges
+      GenArterialPaths();
+
+      // Find area orthogonal vector pair
+      CalcOrthDirs();
+
+      // Find seeds
+      for (int i = 0; i < verts.Count - 1; i++) {
+         GenEdgeSeeds((Vector2)verts[i], (Vector2)verts[i + 1]);
+      }
+      if (verts.Count >= 3) {
+         GenEdgeSeeds((Vector2)verts[verts.Count - 1], (Vector2)verts[0]);
+      }
+      //string str = "";
+      for (int i = 0; i < seeds.Count; i++) {
+         Vector2 s = seeds[i].Item1;
+         AddVertToChunkHash(Vector2.zero, s);
+         seedSet.Add(s);
+         //str += s + ", "; 
+      }
+
+      Debug.Log("Area: " + ToString());
+      GenLocalRoads();
+
+      // BUILDING PLOTS ///////////////////////////////////////////////////////////////////////////////
+      GenBuildings();
+
+   }
+
    // Returns list of arterial edges to generate paths later
    public void GenArterialPaths() {
       for (int i = 0; i < verts.Count - 1; i++) {
@@ -146,32 +181,82 @@ public class Area {
       }
    }
 
-   public void GenArea() {
-      // Get path segments for all arterial edges
-      GenArterialPaths();
-
-      // Find area orthogonal vector pair
-      CalcOrthDirs();
-      //Debug.Log("primaryDir: " + primaryDir + " " + secondaryDir);
-
-      // Find seeds
+   private void CalcOrthDirs() {
+      float[] bins = new float[9];
       for (int i = 0; i < verts.Count - 1; i++) {
-         //Debug.Log("Seeds for: " + (Vector2)verts[i] + " " + (Vector2)verts[i + 1]);
-         GenEdgeSeeds((Vector2)verts[i], (Vector2)verts[i + 1]);
-      }
-      if (verts.Count >= 3) {
-         //Debug.Log("Seeds for: " + (Vector2)verts[verts.Count-1] + " " + (Vector2)verts[0]);
-         GenEdgeSeeds((Vector2)verts[verts.Count - 1], (Vector2)verts[0]);
-      }
-      //string str = "";
-      for (int i = 0; i < seeds.Count; i++) {
-         Vector2 s = seeds[i].Item1;
-         AddVertToChunkHash(Vector2.zero, s);
-         seedSet.Add(s);
-         //str += s + ", "; 
+         Vector2 v1 = (Vector2)verts[i];
+         Vector2 v2 = (Vector2)verts[i + 1];
+         float angle = Vector2.Angle(v1 - v2, new Vector2(1, 0));
+         float thisOrthDir = AngleToOrthDir(angle);
+         int binIdx = (int)(thisOrthDir / 5);
+
+         float weight = (v1 - v2).magnitude;
+
+         bins[binIdx] += weight;
       }
 
-      Debug.Log("Area: " + ToString());
+      float max = 0;
+      int maxIdx = 0;
+      for (int i = 0; i < 9; i++) {
+         if (bins[i] > max) {
+            max = bins[i];
+            maxIdx = i;
+         }
+      }
+      float numer = 0;
+      float denom = 0.0001f;
+      for (int i = maxIdx - 4; i <= maxIdx + 4; i++) {
+         if (i >= 0 && i < 9) {
+            numer += bins[i] * i * 5;
+            denom += bins[i];
+         }
+
+      }
+      primaryDir = numer / denom;
+      if (primaryDir < 8) {
+         primaryDir = 0;
+      }
+      secondaryDir = primaryDir + 90;
+      //Debug.Log(ToString() + " Dirs: " + primaryDir + " " + secondaryDir);
+   }
+
+   private void GenEdgeSeeds(Vector2 v1, Vector2 v2) {
+      (Vector2, Vector2) tup;
+      if (CompareVec(v1, v2) < 0) {
+         tup = (v1, v2);
+      }
+      else {
+         tup = (v2, v1);
+      }
+
+      Vector2 diff = v2 - v1;
+      float angle = Vector2.Angle(diff, Vector2.right);
+      float sign = Mathf.Sign(Vector2.right.x * diff.y - Vector2.right.y * diff.x);
+      if (sign < 0) {
+         angle = 360 - angle;
+      }
+      angle += 90;
+      if (angle >= 360) {
+         angle -= 360;
+      }
+
+      if (WorldManager.arterialEdgeSet.Contains(tup)) {
+         //Debug.Log(v1 + " " + v2 + " " + angle + " " + sign);
+         ArrayList segments = arterialSegments[tup];
+         for (int i = 1; i < segments.Count - 1; i += 4) {
+            seeds.Add(((Vector2)segments[i], angle)); //  + 90
+         }
+         for (int i = 0; i < segments.Count - 1; i++) {
+            AddSegToWallChunkHash((Vector2)segments[i], (Vector2)segments[i + 1]);
+         }
+      }
+      else {
+         AddSegToWallChunkHash(tup.Item1, tup.Item2);
+      }
+   }
+
+   // Gen local roads from seeds
+   private void GenLocalRoads() {
       // Gen local roads from seeds
       bool evensDone = false;
       for (int i = 0; i < seeds.Count; i += 2) {
@@ -185,9 +270,7 @@ public class Area {
          if (usedSeedSet.Contains(seed)) continue;
 
          usedSeedSet.Add(seed);
-         //Debug.Log(seed + " " + sa);
 
-         //float angle = Mathf.Abs(seedAngle - primaryDir) > Mathf.Abs(seedAngle - secondaryDir) ? primaryDir : secondaryDir;
          float angle = 0;
          int dir = 1;
          if (sa > primaryDir + 315 || sa <= primaryDir + 45)
@@ -203,7 +286,6 @@ public class Area {
             dir = -1;
          }
 
-         //Debug.Log("seed " + seed + " " + sa + " " + angle + " primary" + primaryDir + " second" + secondaryDir);
          Vector2 debugV = new Vector2(35.0f, -215.0f);
          bool debug = seed == debugV;
 
@@ -239,96 +321,16 @@ public class Area {
       foreach (KeyValuePair<int, HashSet<int>> pair in localIdGraph) {
          if (pair.Value.Count >= 3) {
             intersections.Add(pair.Key);
+            foreach (int nid in pair.Value) {
+               intersectionNeighborSet.Add(nid);
+            }
          }
       }
 
       // Interatively optimize intersections
-      for (int i = 0; i < optimizationSteps; i++) {
-         foreach (int centerId in intersections) {
-            Vector2 center = id2val[centerId];
+      OptimizeIntersections();
 
-            HashSet<int> neighborIdSet = localIdGraph[centerId];
-            List<Vector2> unsortedNeighborListCleaned = new List<Vector2>();
-            foreach (int neighborId in neighborIdSet) {
-               unsortedNeighborListCleaned.Add(Id2Val(neighborId));
-            }
-            List<Vector2> neighborValList = Util.SortNeighbors(unsortedNeighborListCleaned, center);
-            List<int> neighborIdList = new List<int>();
-            foreach (Vector2 v in neighborValList) {
-               neighborIdList.Add(Val2Id(v));
-            }
-
-            // for each edge of intersection
-            HashSet<Vector2> anchorEdges = new HashSet<Vector2>(); // anchor represents edges to not change!
-            for (int c = 0; c < neighborIdList.Count; c++) {
-               int p = c == 0 ? neighborIdList.Count - 1 : c - 1; // prev idx
-               int n = c == neighborIdList.Count - 1 ? 0 : c + 1; // next idx
-               Vector2 vc = Id2Val(neighborIdList[c]);
-               if (anchorEdges.Contains(vc)) continue;
-               Vector2 vp = Id2Val(neighborIdList[p]);
-               Vector2 vn = Id2Val(neighborIdList[n]);
-               Vector2 dirPrev = vp - center;
-               Vector2 dirNext = vn - center;
-               Vector2 dirCur = vc - center;
-
-               // compare angle with other vertices, dont change if aligned
-               List<Vector2> orthEdges = new List<Vector2>();
-               for (int cc = 0; cc < neighborIdList.Count; cc++) {
-                  Vector2 vcc = Id2Val(neighborIdList[cc]);
-                  if (vcc == vc) continue;
-                  Vector2 dirCurCur = vcc - center;
-                  float compAngle = Vector2.Angle(dirCur, dirCurCur);
-                  if (Mathf.Abs(compAngle % 90) < 3) orthEdges.Add(vcc); //consider negatives?
-               }
-               if (anchorEdges.Contains(vc) || orthEdges.Count > 0) {
-                  // skip edge
-                  foreach (Vector2 e in orthEdges)
-                     anchorEdges.Add(vc);
-                  continue;
-               }
-
-               float thetaPN = Util.CalcAngle(dirPrev, dirNext);
-               float thetaP = Util.CalcAngle(dirPrev, dirCur);
-               float thetaN = Util.CalcAngle(dirCur, dirNext);
-               float thetaIdeal;
-               if (thetaPN < 255) {
-                  thetaIdeal = thetaPN / 2;
-               }
-               else {
-                  HashSet<int> cNeighbors = localIdGraph[neighborIdList[c]];
-                  Vector2 dirNeighbor = Vector2.zero;
-                  foreach (int neighborId in cNeighbors) {
-                     Vector2 neighbor = Id2Val(neighborId);
-                     if (neighbor != center) {
-                        dirNeighbor = neighbor - center;
-                        break;
-                     }
-                  }
-
-                  if (Util.CalcAngle(dirPrev, dirNeighbor) < Util.CalcAngle(dirNeighbor, dirNext)) {
-                     thetaIdeal = thetaPN / 3;
-                  }
-                  else {
-                     thetaIdeal = 2 * thetaPN / 3;
-                  }
-                  Debug.Log("TInt: center:" + center + "  vc" + vc + " " + Util.CalcAngle(dirPrev, dirNeighbor) + " " + Util.CalcAngle(dirNeighbor, dirNext) + " ideal:" + thetaIdeal);
-               }
-               float thetaDiff = thetaIdeal - thetaP;
-               float thetaNew = thetaP + (stepFraction * thetaDiff);
-               float mag = dirCur.magnitude;
-               
-               Vector2 newDir = Util.Rotate(dirPrev, -thetaNew).normalized;
-               Vector2 newCur = center + (mag * newDir);
-
-               ChangeValOfId(neighborIdList[c], newCur);
-            }
-
-
-         }
-      }
-
-
-      // finalize newly optimized local segments
+      // finalize local segments
       HashSet<(Vector2, Vector2)> localSegmentSet = new HashSet<(Vector2, Vector2)>();
       foreach (KeyValuePair<int, HashSet<int>> pair in localIdGraph) {
          int id1 = pair.Key;
@@ -347,23 +349,6 @@ public class Area {
          }
       }
       localSegments = new List<(Vector2, Vector2)>(localSegmentSet);
-   }
-
-   private int Val2Id(Vector2 v) {
-      if (val2id.ContainsKey(v)) return val2id[v];
-      id++;
-      val2id.Add(v, id);
-      id2val.Add(id, v);
-      return id;
-   }
-   public Vector2 Id2Val(int id) {
-      if (!id2val.ContainsKey(id)) return Vector2.zero;
-      return id2val[id];
-   }
-   private void ChangeValOfId(int id, Vector2 val) {
-      val2id.Remove(id2val[id]);
-      val2id[val] = id;
-      id2val[id] = val;
    }
 
    // v is current pos pre-extension, angle is extension direction, dir is positivity of direction +/-1
@@ -481,81 +466,128 @@ public class Area {
       return (nextV, history, false);
    }
 
+   private void OptimizeIntersections() {
+      for (int i = 0; i < optimizationSteps; i++) {
+         foreach (int centerId in intersections) {
+            Vector2 center = id2val[centerId];
+
+            HashSet<int> neighborIdSet = localIdGraph[centerId];
+            List<Vector2> unsortedNeighborListCleaned = new List<Vector2>();
+            foreach (int neighborId in neighborIdSet) {
+               unsortedNeighborListCleaned.Add(Id2Val(neighborId));
+            }
+            List<Vector2> neighborValList = Util.SortNeighbors(unsortedNeighborListCleaned, center);
+            List<int> neighborIdList = new List<int>();
+            foreach (Vector2 v in neighborValList) {
+               neighborIdList.Add(Val2Id(v));
+            }
+
+            // for each edge of intersection
+            HashSet<Vector2> anchorEdges = new HashSet<Vector2>(); // anchor represents edges to not change!
+            for (int c = 0; c < neighborIdList.Count; c++) {
+               int p = c == 0 ? neighborIdList.Count - 1 : c - 1; // prev idx
+               int n = c == neighborIdList.Count - 1 ? 0 : c + 1; // next idx
+               Vector2 vc = Id2Val(neighborIdList[c]);
+               if (anchorEdges.Contains(vc)) continue;
+               Vector2 vp = Id2Val(neighborIdList[p]);
+               Vector2 vn = Id2Val(neighborIdList[n]);
+               Vector2 dirPrev = vp - center;
+               Vector2 dirNext = vn - center;
+               Vector2 dirCur = vc - center;
+
+               // compare angle with other vertices, dont change if aligned
+               List<Vector2> orthEdges = new List<Vector2>();
+               for (int cc = 0; cc < neighborIdList.Count; cc++) {
+                  Vector2 vcc = Id2Val(neighborIdList[cc]);
+                  if (vcc == vc) continue;
+                  Vector2 dirCurCur = vcc - center;
+                  float compAngle = Vector2.Angle(dirCur, dirCurCur);
+                  if (Mathf.Abs(compAngle % 90) < 3) orthEdges.Add(vcc); //consider negatives?
+               }
+               if (anchorEdges.Contains(vc) || orthEdges.Count > 0) {
+                  // skip edge
+                  foreach (Vector2 e in orthEdges)
+                     anchorEdges.Add(vc);
+                  continue;
+               }
+
+               float thetaPN = Util.CalcAngle(dirPrev, dirNext);
+               float thetaP = Util.CalcAngle(dirPrev, dirCur);
+               float thetaN = Util.CalcAngle(dirCur, dirNext);
+               float thetaIdeal;
+               if (thetaPN < 255) {
+                  thetaIdeal = thetaPN / 2;
+               }
+               else {
+                  HashSet<int> cNeighbors = localIdGraph[neighborIdList[c]];
+                  Vector2 dirNeighbor = Vector2.zero;
+                  foreach (int neighborId in cNeighbors) {
+                     Vector2 neighbor = Id2Val(neighborId);
+                     if (neighbor != center) {
+                        dirNeighbor = neighbor - center;
+                        break;
+                     }
+                  }
+
+                  if (Util.CalcAngle(dirPrev, dirNeighbor) < Util.CalcAngle(dirNeighbor, dirNext)) {
+                     thetaIdeal = thetaPN / 3;
+                  }
+                  else {
+                     thetaIdeal = 2 * thetaPN / 3;
+                  }
+               }
+               float thetaDiff = thetaIdeal - thetaP;
+               float thetaNew = thetaP + (stepFraction * thetaDiff);
+               float mag = 0.95f * dirCur.magnitude;
+
+               Vector2 newDir = Util.Rotate(dirPrev, -thetaNew).normalized;
+               Vector2 newCur = center + (mag * newDir);
+
+               ChangeValOfId(neighborIdList[c], newCur);
+
+               // continue smoothing down the line
+               if (localIdGraph[neighborIdList[c]].Count == 2) {
+                  Vector2 lineV = Vector2.zero;
+                  int lineId = -1;
+                  foreach (int nid in localIdGraph[neighborIdList[c]]) {
+                     Vector2 nv = Id2Val(nid);
+                     if (nv != center) {
+                        lineV = nv;
+                        lineId = nid;
+                        break;
+                     }
+                  }
+
+                  float thetaHinge = Mathf.Abs(Vector2.Angle(lineV - vc, center - vc));
+                  if (lineV != Vector2.zero && lineId != -1
+                     && thetaHinge > 110
+                     && !intersections.Contains(lineId)
+                     && !intersectionNeighborSet.Contains(lineId)) {
+
+                     Vector2 dirLine = lineV - center;
+                     float thetaLineP = Util.CalcAngle(dirPrev, dirLine);
+                     float thetaLineDiff = thetaIdeal - thetaLineP;
+                     float thetaLineNew = thetaP + (stepFraction * thetaLineDiff / 2);
+                     Vector2 newLineDir = Util.Rotate(dirPrev, -thetaLineNew).normalized;
+                     Vector2 newLineCur = center + (0.95f * (mag + (lineV - vc).magnitude) * newLineDir);
+
+                     ChangeValOfId(lineId, newLineCur);
+                  }
+               }
+            }
 
 
-   private void GenEdgeSeeds(Vector2 v1, Vector2 v2) {
-      (Vector2, Vector2) tup;
-      if (CompareVec(v1, v2) < 0) {
-         tup = (v1, v2);
-      }
-      else {
-         tup = (v2, v1);
-      }
-
-      Vector2 diff = v2 - v1;
-      float angle = Vector2.Angle(diff, Vector2.right);
-      float sign = Mathf.Sign(Vector2.right.x * diff.y - Vector2.right.y * diff.x);
-      if (sign < 0) {
-         angle = 360 - angle;
-      }
-      angle += 90;
-      if (angle >= 360) {
-         angle -= 360;
-      }
-
-      if (WorldManager.arterialEdgeSet.Contains(tup)) {
-         //Debug.Log(v1 + " " + v2 + " " + angle + " " + sign);
-         ArrayList segments = arterialSegments[tup];
-         for (int i = 1; i < segments.Count - 1; i += 4) {
-            seeds.Add(((Vector2)segments[i], angle)); //  + 90
          }
-         for (int i = 0; i < segments.Count - 1; i++) {
-            AddSegToWallChunkHash((Vector2)segments[i], (Vector2)segments[i + 1]);
-         }
-      }
-      else {
-         AddSegToWallChunkHash(tup.Item1, tup.Item2);
       }
    }
 
-   private void CalcOrthDirs() {
-      float[] bins = new float[9];
-      for (int i = 0; i < verts.Count - 1; i++) {
-         Vector2 v1 = (Vector2)verts[i];
-         Vector2 v2 = (Vector2)verts[i + 1];
-         float angle = Vector2.Angle(v1 - v2, new Vector2(1, 0));
-         float thisOrthDir = AngleToOrthDir(angle);
-         int binIdx = (int)(thisOrthDir / 5);
+   private void GenBuildings() {
 
-         float weight = (v1 - v2).magnitude;
-
-         bins[binIdx] += weight;
-      }
-
-      float max = 0;
-      int maxIdx = 0;
-      for (int i = 0; i < 9; i++) {
-         if (bins[i] > max) {
-            max = bins[i];
-            maxIdx = i;
-         }
-      }
-      float numer = 0;
-      float denom = 0.0001f;
-      for (int i = maxIdx - 4; i <= maxIdx + 4; i++) {
-         if (i >= 0 && i < 9) {
-            numer += bins[i] * i * 5;
-            denom += bins[i];
-         }
-
-      }
-      primaryDir = numer / denom;
-      if (primaryDir < 8) {
-         primaryDir = 0;
-      }
-      secondaryDir = primaryDir + 90;
-      //Debug.Log(ToString() + " Dirs: " + primaryDir + " " + secondaryDir);
    }
+
+   ///////////////////////////////////////////////////////////////////
+   // UTIL FUNCTIONS /////////////////////////////////////////////////
+   ///////////////////////////////////////////////////////////////////
 
    private float AngleToOrthDir(float angle) {
       float dir = 0;
@@ -576,6 +608,25 @@ public class Area {
          dir -= 0.01f;
       }
       return dir;
+   }
+
+
+   // Local vertex ID Value link
+   private int Val2Id(Vector2 v) {
+      if (val2id.ContainsKey(v)) return val2id[v];
+      id++;
+      val2id.Add(v, id);
+      id2val.Add(id, v);
+      return id;
+   }
+   public Vector2 Id2Val(int id) {
+      if (!id2val.ContainsKey(id)) return Vector2.zero;
+      return id2val[id];
+   }
+   private void ChangeValOfId(int id, Vector2 val) {
+      val2id.Remove(id2val[id]);
+      val2id[val] = id;
+      id2val[id] = val;
    }
 
 
@@ -668,30 +719,7 @@ public class Area {
       }
       return false;
    }
-   /*public Vector2 IntersectionNearby(Vector2 vert) {
-      Vector2Int chunk = W2AC(vert);
-      float minDist = 100;
-      Vector2 minIntersection = Vector2.zero;
-      for (int i = -1; i <= 1; i++) {
-         for (int j = -1; j <= 1; j++) {
-            Vector2Int thisChunk = chunk + new Vector2Int(i, j);
-            List<(Vector2, Vector2)> vertList = GetVertListAt(thisChunk);
-            if (vertList != null) {
-               foreach ((Vector2, Vector2) pair in vertList) {
-                  Vector2 point = pair.Item2;
-                  float dist = (vert - point).magnitude;
-                  if (point != vert && intersections.Contains(point) && dist < 6f) {
-                     if (dist < minDist) {
-                        minDist = dist;
-                        minIntersection = point;
-                     }
-                  }
-               }
-            }
-         }
-      }
-      return minIntersection;
-   }*/
+   
 
    // world to area chunk (smaller than regular chunk)
    public static Vector2Int W2AC(Vector2 worldCoord) {

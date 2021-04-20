@@ -114,7 +114,6 @@
     <Compile Include="Assets\Scripts\Util.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\VoronoiFactory.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Data\BadTriQueue.cs" />
-    <Compile Include="Assets\Scripts\Area.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\GenericMesher.cs" />
     <Compile Include="Assets\Scripts\LocalGenerator.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\RegionPointer.cs" />
@@ -186,6 +185,7 @@
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\HalfedgePriorityQueue.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\PointType.cs" />
     <Compile Include="Assets\Scripts\Player\FlyCamera.cs" />
+    <Compile Include="Assets\Scripts\Settings.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\SubSegment.cs" />
     <Compile Include="Assets\Libraries\AStarPathfinding\Grid.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\VertexSorter.cs" />
@@ -202,7 +202,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
-    <Compile Include="Assets\Scripts\Settings.cs" />
+    <Compile Include="Assets\Scripts\Area.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />
