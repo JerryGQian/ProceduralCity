@@ -229,16 +229,26 @@ public class WorldBuilder : MonoBehaviour {
    }
 
    public void BuildAreaBlocks(Area a) {
+      int bi = 0;
       foreach (Block b in a.blocks) {
          //b.voronoi;
-         foreach (Vector2 v in b.corners) {
+         GameObject parent = Instantiate(new GameObject());
+         parent.name = "BlockPlots " + b.ToString();
+
+         GameObject cube = orangeCube;
+         if (bi % 3 == 0) cube = orangeCube;
+         if (bi % 3 == 1) cube = purpleCube;
+         if (bi % 3 == 2) cube = yellowCube;
+         foreach (Vector2 v in b.plotCenters) {
             GameObject obj = Instantiate(
-                    orangeCube,
+                    cube,
                     new Vector3(v.x, 10, v.y),
                     Quaternion.AngleAxis(0, Vector3.up));
             Transform trans = obj.GetComponent<Transform>();
             trans.localScale = new Vector3(1.5f, 1.5f, 1.5f);
+            trans.SetParent(parent.transform);
          }
+         /*if (b.sites != null)
          foreach (KeyValuePair<Vector2f, Site> kv in b.sites) {
             GameObject obj = Instantiate(
                     purpleCube,
@@ -253,18 +263,16 @@ public class WorldBuilder : MonoBehaviour {
             //Debug.Log(edge.ClippedEnds[LR.LEFT] + " " +  edge.ClippedEnds[LR.RIGHT]);
             if (edge.ClippedEnds == null) continue;
             GenPlotEdge(edge.ClippedEnds[LR.LEFT], edge.ClippedEnds[LR.RIGHT]);
-            /*if (edge != null && edge.LeftVertex != null && edge.RightVertex != null)
-               GenPlotEdge(new Vector2f(edge.LeftVertex.x, edge.LeftVertex.y),
-                  new Vector2f(edge.RightVertex.x, edge.RightVertex.y));*/
-         }
+         }*/
+         bi++;
       }
    }
    private void GenPlotEdge(Vector2f p0, Vector2f p1) {
-      Debug.Log(p0 + " " + p1);
+      Debug.Log("Plotting edge: " + p0 + " " + p1);
       float x0 = p0.x;
-      float y0 = 0;// p0.y;
+      float y0 = p0.y;
       float x1 = p1.x;
-      float y1 = 0;// p1.y;
+      float y1 = p1.y;
 
       float x = (float)(x0 + x1) / 2;
       float y = (float)(y0 + y1) / 2;

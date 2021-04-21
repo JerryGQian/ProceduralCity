@@ -176,6 +176,7 @@ public class Area {
       if (WorldManager.arterialEdgeSet.Contains(tup)) {
          ArrayList segments = pathfinding.FindPath(tup.Item1, tup.Item2);
          arterialSegments[tup] = segments;
+         arterialSegments[(tup.Item2, tup.Item1)] = segments;
       }
    }
 
@@ -260,7 +261,7 @@ public class Area {
       for (int i = 0; i < seeds.Count; i += 2) {
          Vector2 seed = seeds[i].Item1;
          float sa = seeds[i].Item2;
-         //Debug.Log(i + " " + seeds.Count);
+         //Debug.Log(i + " " + seed);
          if (!evensDone && i >= seeds.Count - 2) {
             evensDone = true;
             i = -1; // turns to +1 in next iteration (+=2)
@@ -351,27 +352,47 @@ public class Area {
          localGraph.Add(Id2Val(pair.Key), set);
       }
       localSegments = new List<(Vector2, Vector2)>(localSegmentSet);
-
       // add arterial ring to graph
       roadGraph = new Dictionary<Vector2, HashSet<Vector2>>(localGraph);
+
+      Vector2 testVec = new Vector2(-50f, -180f);
+      /*if (roadGraph.ContainsKey(testVec)) {
+         string str = "";
+         foreach (Vector2 vec in roadGraph[testVec]) {
+            str += vec + ",";
+         }
+         Debug.Log("RoadGraph test:" + roadGraph[testVec].Count + " " + str);
+      }*/
+      Debug.Log(verts.Count);
       for (int i = 0; i < verts.Count - 1; i++) {
          Vector2 v1 = (Vector2)verts[i];
          Vector2 v2 = (Vector2)verts[i + 1];
          (Vector2, Vector2) tup = (v1, v2);
+         Debug.Log(i + " " + tup + " " + arterialSegments.ContainsKey(tup));
 
          if (arterialSegments.ContainsKey(tup)) {
+            //if ((Vector2)arterialSegments[tup][0] == v1) { // may be reversed
             for (int j = 0; j < arterialSegments[tup].Count - 1; j++) {
                Vector2 sv1 = (Vector2)arterialSegments[tup][j];
                Vector2 sv2 = (Vector2)arterialSegments[tup][j + 1];
-               //(Vector2, Vector2) stup = (sv1, sv2);
+               //Debug.Log("RoadGraph add " + sv1 + " " + sv2);
+               //if (sv1 == testVec || sv2 == testVec) Debug.Log("RoadGraph add " + sv1 + " " + sv2);
                if (!roadGraph.ContainsKey(sv1)) roadGraph.Add(sv1, new HashSet<Vector2>());
                if (!roadGraph.ContainsKey(sv2)) roadGraph.Add(sv2, new HashSet<Vector2>());
-               /*foreach (Vector2 n in roadGraph[sv1]) {
-                  roadGraph[n].Add(sv1);
-               }*/
                roadGraph[sv1].Add(sv2);
                roadGraph[sv2].Add(sv1);
             }
+            /*}
+            else if ((Vector2)arterialSegments[tup][0] == v2) {
+               for (int j = arterialSegments[tup].Count - 1; j > 0; j--) {
+                  Vector2 sv1 = (Vector2)arterialSegments[tup][j];
+                  Vector2 sv2 = (Vector2)arterialSegments[tup][j - 1];
+                  if (!roadGraph.ContainsKey(sv1)) roadGraph.Add(sv1, new HashSet<Vector2>());
+                  if (!roadGraph.ContainsKey(sv2)) roadGraph.Add(sv2, new HashSet<Vector2>());
+                  roadGraph[sv1].Add(sv2);
+                  roadGraph[sv2].Add(sv1);
+               }
+            }*/
          }
          else {
             if (!roadGraph.ContainsKey(v1)) roadGraph.Add(v1, new HashSet<Vector2>());
@@ -380,6 +401,13 @@ public class Area {
             roadGraph[v2].Add(v1);
          }
       }
+      /*if (roadGraph.ContainsKey(testVec)) {
+         string str = "";
+         foreach (Vector2 vec in roadGraph[testVec]) {
+            str += vec + ",";
+         }
+         Debug.Log("RoadGraph test2:" + roadGraph[testVec].Count + " " + str);
+      }*/
    }
 
    // v is current pos pre-extension, angle is extension direction, dir is positivity of direction +/-1
@@ -591,9 +619,11 @@ public class Area {
 
                   float thetaHinge = Mathf.Abs(Vector2.Angle(lineV - vc, center - vc));
                   if (lineV != Vector2.zero && lineId != -1
+                     && !seedSet.Contains(lineV)
                      && thetaHinge > 110
                      && !intersections.Contains(lineId)
-                     && !intersectionNeighborSet.Contains(lineId)) {
+                     && !intersectionNeighborSet.Contains(lineId)
+                  ) {
 
                      Vector2 dirLine = lineV - center;
                      float thetaLineP = Util.CalcAngle(dirPrev, dirLine);
@@ -621,8 +651,9 @@ public class Area {
       blocks = BlockFinder.FindBlocks(roadGraph, intersectionList, primaryDir, secondaryDir);
       Debug.Log("Blocks: " + blocks.Count);
       if (blocks.Count > 0) Debug.Log("Block: " + blocks[0].ToString());
-      
+
       // gens plots and buildings
+      //blocks[0].GenBlock();
       foreach (Block b in blocks) {
          b.GenBlock();
       }
