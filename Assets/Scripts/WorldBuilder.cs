@@ -13,6 +13,7 @@ public class WorldBuilder : MonoBehaviour {
    public GameObject orangeCube;
    public GameObject purpleCube;
    public GameObject blueCube;
+   public GameObject grayCube;
    public GameObject chunkMeshPrefab;
    public GameObject roadMeshPrefab;
 
@@ -230,6 +231,7 @@ public class WorldBuilder : MonoBehaviour {
 
    public void BuildAreaBlocks(Area a) {
       int bi = 0;
+      //Random rand = new Random();
       foreach (Block b in a.blocks) {
          //b.voronoi;
          GameObject parent = Instantiate(new GameObject());
@@ -239,31 +241,64 @@ public class WorldBuilder : MonoBehaviour {
          if (bi % 3 == 0) cube = orangeCube;
          if (bi % 3 == 1) cube = purpleCube;
          if (bi % 3 == 2) cube = yellowCube;
-         foreach (Vector2 v in b.plotCenters) {
+         /*foreach (Vector2 v in b.lotCenters) {
+            float height = 10 * TerrainGen.CalculateDensityAt(v) - 3 + Random.Range(-1, 2);
             GameObject obj = Instantiate(
                     cube,
-                    new Vector3(v.x, 10, v.y),
+                    new Vector3(v.x, height / 2, v.y),
                     Quaternion.AngleAxis(0, Vector3.up));
             Transform trans = obj.GetComponent<Transform>();
-            trans.localScale = new Vector3(1.5f, 1.5f, 1.5f);
+            trans.localScale = new Vector3(1.5f, height, 1.5f);
+            trans.SetParent(parent.transform);
+         }*/
+         foreach (KeyValuePair<Vector2, Lot> lotp in b.lots) {
+            Lot lot = lotp.Value;
+            float density = TerrainGen.CalculateDensityAt(lot.center);
+            if (lot.width > 20 || lot.height > 20 || density < 0.1f) continue;
+            float height = 10 * density
+               - 3 + Random.Range(-1, 2);
+            GameObject obj = Instantiate(
+                    grayCube,
+                    new Vector3(lot.center.x, height / 2 + TerrainGen.GenerateTerrainAt(new Vector2Int((int)lot.center.x, (int)lot.center.y)), lot.center.y),
+                    Quaternion.AngleAxis(0, Vector3.up));
+            Transform trans = obj.GetComponent<Transform>();
+            trans.localScale = 
+               new Vector3(
+                  lot.width, 
+                  height, 
+                  lot.height);
             trans.SetParent(parent.transform);
          }
-         /*if (b.sites != null)
-         foreach (KeyValuePair<Vector2f, Site> kv in b.sites) {
-            GameObject obj = Instantiate(
-                    purpleCube,
-                    new Vector3(kv.Key.x, 10, kv.Key.y),
-                    Quaternion.AngleAxis(0, Vector3.up));
-            Transform trans = obj.GetComponent<Transform>();
-            trans.localScale = new Vector3(1, 5, 1);
-            
+
+         ///////////////////////////
+         if (false)
+         foreach ((Vector2, Vector2) e in b.edges) {
+            Vector2 P0 = e.Item1;
+            Vector2 P1 = e.Item2;
+
+            //if (wm.regions[regionIdx].bounds.InBounds(P0) || wm.regions[regionIdx].bounds.InBounds(P1)) {
+            float dist = (P0 - P1).magnitude;
+            //Debug.Log(P0 + " -> " + P1 + " " + dist);
+
+            float x = (float)(P0.x + P1.x) / 2;
+            float y = (float)(P0.y + P1.y) / 2;
+
+            Vector2 vec = new Vector2(P1.x - P0.x, P1.y - P0.y);
+
+            float angle = Mathf.Atan2(P1.x - P0.x, P1.y - P0.y) * Mathf.Rad2Deg + 90;
+
+            GameObject segment = Instantiate(yellowCube, new Vector3(x, 5, y), Quaternion.AngleAxis(angle, Vector3.up));
+            segment.name = "BlockLotEdge " + P0 + " " + P1;
+            Transform trans = segment.GetComponent<Transform>();
+            //trans.position = new Vector3(x, 0, y);
+            //trans.rotation = Quaternion.AngleAxis(angle, Vector3.up);
+            trans.localScale = new Vector3(vec.magnitude, 1, .1f);
+
          }
-         foreach (csDelaunay.Edge edge in b.edges) {
-            // if the edge doesn't have clippedEnds, if was not within the bounds, dont draw it
-            //Debug.Log(edge.ClippedEnds[LR.LEFT] + " " +  edge.ClippedEnds[LR.RIGHT]);
-            if (edge.ClippedEnds == null) continue;
-            GenPlotEdge(edge.ClippedEnds[LR.LEFT], edge.ClippedEnds[LR.RIGHT]);
-         }*/
+
+
+
+         ///////////////////
          bi++;
       }
    }

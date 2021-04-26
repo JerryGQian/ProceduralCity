@@ -1,20 +1,28 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using csDelaunay;
+using TriangleNet.Geometry;
+using TriangleNet.Meshing;
+using TriangleNet.Meshing.Algorithm;
+//using csDelaunay;
 
 public class Block {
    public ArrayList verts;
    public Bounds bounds;
    public List<Vector2> corners = new List<Vector2>();
-   public List<Vector2> plotCenters = new List<Vector2>();
+   public List<Vector2> lotCenters = new List<Vector2>();
    private List<int> cornersIdx = new List<int>();
    private float primaryDir;
    private float secondaryDir;
 
-   public Voronoi voronoi;
+   public ArrayList edges = new ArrayList();
+   public Dictionary<Vector2, List<Vector2>> neighbors = new Dictionary<Vector2, List<Vector2>>();
+   private HashSet<Vector2> outerBoundary = new HashSet<Vector2>();
+   public Dictionary<Vector2, Lot> lots = new Dictionary<Vector2, Lot>();
+
+   /*public Voronoi voronoi;
    public Dictionary<Vector2f, Site> sites;
-   public List<Edge> edges;
+   public List<Edge> edges;*/
 
    public Block(ArrayList list, float primaryDir, float secondaryDir) {
       verts = list;
@@ -109,8 +117,8 @@ public class Block {
    ///////////////////////////////////////////////////////////////////
    ///
    public void GenBlock() {
-      List<Vector2f> points = new List<Vector2f>();
-      List<Vector2> startPlotCenters = new List<Vector2>();
+      //List<Vector2f> points = new List<Vector2f>();
+      List<Vector2> startLotCenters = new List<Vector2>();
 
       // find corners
       for (int i = 0; i < verts.Count - 1; i++) {
@@ -124,7 +132,7 @@ public class Block {
          if (angle < 165) {
             corners.Add(vc);
             cornersIdx.Add(i);
-            points.Add(new Vector2f(vc.x, vc.y));
+            //points.Add(new Vector2f(vc.x, vc.y));
          }
       }
       Vector2 avgCorner = Vector2.zero;
@@ -135,64 +143,141 @@ public class Block {
 
       foreach (Vector2 c in corners) {
          Vector2 dir = (avgCorner - c).normalized;
-         startPlotCenters.Add(c + dir * 3);
+         startLotCenters.Add(c + dir * 3);
       }
       //corners = new List<Vector2>(tempCorners);
 
       // gen points
-      
-      if (true)
-         for (int i = 0; i < startPlotCenters.Count - 1; i++) {
-            Vector2 corner1 = startPlotCenters[i];
-            Vector2 corner2 = startPlotCenters[i+1];
-            plotCenters.Add(corner1);
 
+      if (true)
+         for (int i = 0; i < startLotCenters.Count - 1; i++) {
+            Vector2 corner1 = startLotCenters[i];
+            Vector2 corner2 = startLotCenters[i + 1];
+            lotCenters.Add(corner1);
 
             Vector2 diff = corner2 - corner1;
             Vector2 dir = diff.normalized;
             float lineDist = diff.magnitude;
-            int numPlots = (int)(lineDist / 7);
-            float plotWidth = lineDist / numPlots;
+            int numLots = (int)(lineDist / 7);
+            float lotWidth = lineDist / numLots;
 
             //traverse corner to corner
-            Vector2 cur = corner1 + (plotWidth / 2) * dir;
-            float distTraversed = plotWidth / 2;
-            plotCenters.Add(cur);
-            //points.Add(new Vector2f(cur.x, cur.y));
-            int plotsPlaced = 1;
-            while (distTraversed < lineDist && plotsPlaced < numPlots) {
-               cur += (plotWidth / 2) * dir;
-               if (!bounds.InBounds(cur)) break;
+            Vector2 cur = corner1 + (lotWidth / 2) * dir;
+            float distTraversed = lotWidth / 2;
+
+            if (!(
+               cur.x == Mathf.Infinity || cur.x == -Mathf.Infinity || cur.y == Mathf.Infinity || cur.y == -Mathf.Infinity
+               || float.IsNaN(cur.x) || float.IsNaN(cur.y)
+               )) {
+
+
+               lotCenters.Add(cur);
                //points.Add(new Vector2f(cur.x, cur.y));
-               plotCenters.Add(cur);
-               plotsPlaced++;
+               int lotsPlaced = 1;
+               while (distTraversed < lineDist && lotsPlaced < numLots) {
+                  cur += (lotWidth / 2) * dir;
+                  if (!bounds.InBounds(cur)) break;
+                  //points.Add(new Vector2f(cur.x, cur.y));
+                  lotCenters.Add(cur);
+                  lotsPlaced++;
+               }
             }
          }
-      /*for (int i = 0; i < corners.Count - 1; i++) {
-         int idx1 = cornersIdx[i];
-         int idx2 = cornersIdx[i + 1];
-         Vector2 corner1 = (Vector2)verts[idx1];
-         Vector2 corner2 = (Vector2)verts[idx2];
-         points.Add(new Vector2f(corner1.x, corner1.y));
 
-         Vector2 diff = corner2 - corner1;
-         Vector2 dir = diff.normalized;
-         float lineDist = diff.magnitude;
-         int numPlots = (int)(lineDist / 7);
-         float plotWidth = lineDist / numPlots;
 
-         //traverse corner to corner
-         Vector2 cur = corner1 + (plotWidth / 2) * dir;
-         float distTraversed = plotWidth / 2;
-         points.Add(new Vector2f(cur.x, cur.y));
-         int plotsPlaced = 1;
-         while (distTraversed < lineDist && plotsPlaced < numPlots) {
-            cur += (plotWidth / 2) * dir;
-            points.Add(new Vector2f(cur.x, cur.y));
-            plotCenters.Add(cur);
-            plotsPlaced++;
+
+      // Build lot graph
+      if (lotCenters.Count >= 3) {
+         List<Vector2> lotGuides = new List<Vector2>(lotCenters);
+         for (int i = 0; i < verts.Count - 1; i++) {
+            Vector2 v = (Vector2)verts[i];
+            Vector2 dir = (avgCorner - v).normalized;
+            Vector2 newv = v + dir * 1;
+            lotGuides.Add(newv);
+            outerBoundary.Add(newv);
          }
-      }*/
+
+         List<Vertex> points = new List<Vertex>();
+         foreach (Vector2 v in lotGuides) {
+            points.Add(new Vertex(v.x, v.y));
+         }
+         //Debug.Log("LotCenters: " + Util.List2String(lotCenters));
+         // Generate a default mesher
+         var mesher = new GenericMesher(new Dwyer());
+         // Generate mesh (Delaunay Triangulation)
+         IMesh mesh = mesher.Triangulate(points);
+         // Init edge/vertex lists for mutation
+         ArrayList vertices = new ArrayList();
+         foreach (Vertex v in mesh.Vertices) {
+            vertices.Add(v);
+         }
+         foreach (Edge e in mesh.Edges) {
+            Vertex vert1 = (Vertex)vertices[e.P0];
+            Vertex vert2 = (Vertex)vertices[e.P1];
+            Vector2 vec1 = Util.VertexToVector2(vert1);
+            Vector2 vec2 = Util.VertexToVector2(vert2);
+
+            edges.Add((vec1, vec2));
+
+            // build neighbor map
+            if (!neighbors.ContainsKey(vec1)) {
+               neighbors[vec1] = new List<Vector2>();
+            }
+            if (!neighbors.ContainsKey(vec2)) {
+               neighbors[vec2] = new List<Vector2>();
+            }
+            neighbors[vec1].Add(vec2);
+            neighbors[vec2].Add(vec1);
+         }
+
+         // find lot bounds
+         foreach (Vector2 v in lotCenters) {
+
+            Lot lot = new Lot(v);
+            foreach (Vector2 vn in neighbors[v]) {
+               Vector2 vNew;
+               if (outerBoundary.Contains(vn)) {
+                  vNew = vn;
+                  // accept as outer bound
+                  // 0=N, 1=E, 2=S, 3=W
+                  /*if (vn.y > (float)lot.extrema[0]) {
+                     lot.extrema[0] = vn.y;
+                  }
+                  if (vn.x > (float)lot.extrema[1]) {
+                     lot.extrema[1] = vn.x;
+                  }
+                  if (vn.y < (float)lot.extrema[2]) {
+                     lot.extrema[2] = vn.y;
+                  }
+                  if (vn.x < (float)lot.extrema[3]) {
+                     lot.extrema[3] = vn.x;
+                  }*/
+               }
+               else {
+                  vNew = (v + vn) / 2;
+               }
+               if (vNew.y > v.y && vNew.y < (float)lot.extrema[0]) {
+                  lot.extrema[0] = vNew.y;
+               }
+               if (vNew.x > v.x && vNew.x < (float)lot.extrema[1]) {
+                  lot.extrema[1] = vNew.x;
+               }
+               if (vNew.y < v.y && vNew.y > (float)lot.extrema[2]) {
+                  lot.extrema[2] = vNew.y;
+               }
+               if (vNew.x < v.x && vNew.x > (float)lot.extrema[3]) {
+                  lot.extrema[3] = vNew.x;
+               }
+            }
+            lot.Calc();
+            if (!lots.ContainsKey(v))
+               lots.Add(v, lot);
+         }
+
+      }
+
+
+      ///////////////////////////////////////////////////////////////
       /*for (int i = 0; i < verts.Count; i++) {
          if (i % 6 == 0) {
             Vector2 v = (Vector2)verts[i];
@@ -225,18 +310,7 @@ public class Block {
       // extrude plots into buildings
    }
 
-   private List<Vector2f> CreateRandomPoint() {
-      // Use Vector2f, instead of Vector2
-      // Vector2f is pretty much the same than Vector2, but like you could run Voronoi in another thread
-      List<Vector2f> points = new List<Vector2f>();
-      for (int i = 0; i < 10; i++) {
-         points.Add(new Vector2f(Random.Range(0, 20), Random.Range(0, 20)));
-      }
-
-      return points;
-   }
-
-   private void GenVoronoi(List<Vector2f> points) {
+   /*private void GenVoronoi(List<Vector2f> points) {
       // Create sites (the center of polygons)
       //List<Vector2f> points = new List<Vector2f>();
 
@@ -252,5 +326,5 @@ public class Block {
 
       sites = voronoi.SitesIndexedByLocation;
       edges = voronoi.Edges;
-   }
+   }*/
 }

@@ -363,12 +363,12 @@ public class Area {
          }
          Debug.Log("RoadGraph test:" + roadGraph[testVec].Count + " " + str);
       }*/
-      Debug.Log(verts.Count);
+      //Debug.Log(verts.Count);
       for (int i = 0; i < verts.Count - 1; i++) {
          Vector2 v1 = (Vector2)verts[i];
          Vector2 v2 = (Vector2)verts[i + 1];
          (Vector2, Vector2) tup = (v1, v2);
-         Debug.Log(i + " " + tup + " " + arterialSegments.ContainsKey(tup));
+         //Debug.Log(i + " " + tup + " " + arterialSegments.ContainsKey(tup));
 
          if (arterialSegments.ContainsKey(tup)) {
             //if ((Vector2)arterialSegments[tup][0] == v1) { // may be reversed

@@ -92,6 +92,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\IPolygon.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\HalfEdge.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\IEdge.cs" />
+    <Compile Include="Assets\Scripts\BlockFinder.cs" />
     <Compile Include="Assets\Scripts\Player\CameraController.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\QualityOptions.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleSampler.cs" />
@@ -108,12 +109,14 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\ConstraintMesher.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanResult.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />
+    <Compile Include="Assets\Scripts\Block.cs" />
     <Compile Include="Assets\Scripts\Hp.cs" />
     <Compile Include="Assets\Scripts\AreaFinder.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Winding.cs" />
     <Compile Include="Assets\Scripts\Util.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\VoronoiFactory.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Data\BadTriQueue.cs" />
+    <Compile Include="Assets\Scripts\Area.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\GenericMesher.cs" />
     <Compile Include="Assets\Scripts\LocalGenerator.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\RegionPointer.cs" />
@@ -202,9 +205,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
-    <Compile Include="Assets\Scripts\Area.cs" />
-    <Compile Include="Assets\Scripts\Block.cs" />
-    <Compile Include="Assets\Scripts\BlockFinder.cs" />
+    <Compile Include="Assets\Scripts\Lot.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />

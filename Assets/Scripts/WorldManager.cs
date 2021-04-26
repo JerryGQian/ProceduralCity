@@ -299,7 +299,7 @@ public class WorldManager : MonoBehaviour {
             foreach (KeyValuePair<(Vector2, Vector2), ArrayList> e in actualArea.arterialSegments) {
                wb.BuildArterial(e.Key, e.Value);
             }
-            wb.BuildAreaDebug(actualArea);
+            if (Settings.renderAreaDebug) wb.BuildAreaDebug(actualArea);
             wb.BuildAreaLocal(actualArea);
             wb.BuildAreaBlocks(actualArea);
          }

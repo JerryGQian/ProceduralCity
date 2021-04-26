@@ -32,6 +32,10 @@ public class TerrainGen {
       Vector2 w = Util.C2W(chunkIdx);
       return CalculateDensityAt(new Vector2Int((int)w.x, (int)w.y));
    }
+   public static float CalculateDensityAt(Vector2 v) {
+      return CalculateDensityAt(new Vector2Int((int)v.x, (int)v.y));
+   }
+
    public static float CalculateDensityAt(Vector2Int v) {
       //Vector2Int localPoint = GetLocalCoord(globalPoint);
 

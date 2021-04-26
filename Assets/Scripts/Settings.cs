@@ -7,5 +7,6 @@ public class Settings {
 
    // Render settings
    public static bool renderArterialLayout = false;
+   public static bool renderAreaDebug = false;
 
 }
