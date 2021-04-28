@@ -36,10 +36,6 @@ public class HighwayGenerator {
       this.regionIdx = regionIdx;
    }
 
-   /*public IEnumerator GenHighway() {
-      return GenHighwayCoroutine();
-   }*/
-
    public void GenHighwayCoroutine() {
       Dictionary<Vector2, float> densityLookup = new Dictionary<Vector2, float>();
 
@@ -54,7 +50,6 @@ public class HighwayGenerator {
       var result = RunOfflineDbscan(features);
 
       // Build highway graph
-
       var points = new List<Vertex>();
       foreach (int i in result.Clusters.Keys) {
          points.Add(new Vertex(result.Clusters[i][0].Feature.x, result.Clusters[i][0].Feature.y));
@@ -226,10 +221,8 @@ public class HighwayGenerator {
          foreach (Vector2 v in segments) {
             WorldBuilder.AddHighwayVertToChunkHash(v, eVec);
          }
-         //Debug.Log(segments.Count);
 
          if (segments != null) highways.Add(segments);
-         //yield return null;
       }
    }
 
@@ -283,8 +276,8 @@ public class HighwayGenerator {
    }
 
    public static bool InPatchBounds(Vector2Int regionIdx, Vector2 P0, Vector2 P1) {
-      for (int i = -2; i <= 2; i++) {
-         for (int j = -2; j <= 2; j++) {
+      for (int i = -3; i <= 3; i++) {
+         for (int j = -3; j <= 3; j++) {
             if (WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P0) || WorldManager.regions[regionIdx + new Vector2Int(i, j)].bounds.InBounds(P1)) {
                return true;
             }
@@ -361,5 +354,5 @@ public class HighwayGenerator {
       return (feature1 - feature2).magnitude;
    }
 
-   
+
 }

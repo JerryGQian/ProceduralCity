@@ -7,7 +7,7 @@ public class WorldManager : MonoBehaviour {
    public static int dim = 500; // deprecated
    public static int dimArea = dim * dim;
 
-   public static int loadRadius = 5; //
+   public static int loadRadius = 5; // radius of chunk patch (not counting center)
    public static int chunkSize = 10; // units in length per chunk
    public static int regionDim = 32; // chunks in length per region, must be odd 24
 
@@ -107,11 +107,9 @@ public class WorldManager : MonoBehaviour {
       // Gen Chunks
       int c = 0;
       foreach (Vector2Int v in idxToRender) {
-         //Debug.Log("LLL Chunk loading: " + i);
-         // Preloads patch & Loads center
          GenChunkAtIdx(v);
          c++;
-         if (c % 8 == 0) {
+         if (c % Settings.chunkLoadingIncrement == 0) {
             yield return null;
          }
       }
@@ -146,17 +144,9 @@ public class WorldManager : MonoBehaviour {
    }
 
    // Preloads 3x3 patch, Loads center
-   //IEnumerator GenChunkAtIdx(Vector2Int idx) {
    private void GenChunkAtIdx(Vector2Int idx) {
-      /*// Preload Chunk
-      for (int i = -1; i <= 1; i++) {
-         for (int j = -1; j <= 1; j++) {
-            PreloadChunk(idx + new Vector2Int(i, j));
-         }
-      }*/
       LoadChunk(idx);
       RenderChunk(idx);
-      //yield return null;
    }
 
    // Snapshots /////////////////////////////////////////////////////////////////////
@@ -190,11 +180,13 @@ public class WorldManager : MonoBehaviour {
             }
 
             if (!region.generated) {
-               foreach ((Vector2, float) cd in region.densityCenters) {
-                  Vector2 center = cd.Item1;
-                  Instantiate(indicator, new Vector3(center.x, 10, center.y), Quaternion.identity);
+               if (Settings.renderDensityCenters) {
+                  foreach ((Vector2, float) cd in region.densityCenters) {
+                     Vector2 center = cd.Item1;
+                     wb.BuildDensityCenterMarker(center);
+                  }
+                  region.generated = true;
                }
-               region.generated = true;
             }
          }
       }
@@ -204,7 +196,6 @@ public class WorldManager : MonoBehaviour {
          regions[regionIdx].highwayPatchExecuted = true;
          // Gen highway and wait till done
          GenBuildHighway(patchDensityCenters, regionIdx);
-         //yield return StartCoroutine(GenBuildHighway(patchDensityCenters, regionIdx));
 
          // Prep arterial
          if (!regions[regionIdx].arterialLayoutGenerated) {
@@ -214,19 +205,12 @@ public class WorldManager : MonoBehaviour {
       }
    }
 
-   /*IEnumerator GenBuildHighway(ArrayList patchDensityCenters, Vector2Int regionIdx) {
-      Region region = regions[regionIdx];
-      region.hwg = new HighwayGenerator(patchDensityCenters, regionIdx);
-      //HighwayGenerator highwayGen = new HighwayGenerator(patchDensityCenters, regionIdx);
-      IEnumerator genHighwayCoroutine = region.hwg.GenHighway();
-      yield return StartCoroutine(genHighwayCoroutine);
-      wb.BuildHighway(region.hwg, regionIdx);
-      yield return null;
-   }*/
    private void GenBuildHighway(ArrayList patchDensityCenters, Vector2Int regionIdx) {
       Region region = regions[regionIdx];
+      Debug.Log("GenBuildHighway " + regionIdx);
       region.hwg = new HighwayGenerator(patchDensityCenters, regionIdx);
       region.hwg.GenHighwayCoroutine();
+      wb.BuildRegionMarkers(regionIdx);
       wb.BuildHighway(region.hwg, regionIdx);
    }
 
@@ -299,7 +283,7 @@ public class WorldManager : MonoBehaviour {
             foreach (KeyValuePair<(Vector2, Vector2), ArrayList> e in actualArea.arterialSegments) {
                wb.BuildArterial(e.Key, e.Value);
             }
-            if (Settings.renderAreaDebug) wb.BuildAreaDebug(actualArea);
+            wb.BuildAreaDebug(actualArea);
             wb.BuildAreaLocal(actualArea);
             wb.BuildAreaBlocks(actualArea);
          }

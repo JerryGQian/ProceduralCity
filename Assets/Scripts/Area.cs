@@ -147,7 +147,7 @@ public class Area {
          seedSet.Add(s);
       }
 
-      Debug.Log("Area: " + ToString());
+      //Debug.Log("Area: " + ToString());
 
       GenLocalRoads();
       GenBlocks();
@@ -356,43 +356,21 @@ public class Area {
       roadGraph = new Dictionary<Vector2, HashSet<Vector2>>(localGraph);
 
       Vector2 testVec = new Vector2(-50f, -180f);
-      /*if (roadGraph.ContainsKey(testVec)) {
-         string str = "";
-         foreach (Vector2 vec in roadGraph[testVec]) {
-            str += vec + ",";
-         }
-         Debug.Log("RoadGraph test:" + roadGraph[testVec].Count + " " + str);
-      }*/
-      //Debug.Log(verts.Count);
+
       for (int i = 0; i < verts.Count - 1; i++) {
          Vector2 v1 = (Vector2)verts[i];
          Vector2 v2 = (Vector2)verts[i + 1];
          (Vector2, Vector2) tup = (v1, v2);
-         //Debug.Log(i + " " + tup + " " + arterialSegments.ContainsKey(tup));
 
          if (arterialSegments.ContainsKey(tup)) {
-            //if ((Vector2)arterialSegments[tup][0] == v1) { // may be reversed
             for (int j = 0; j < arterialSegments[tup].Count - 1; j++) {
                Vector2 sv1 = (Vector2)arterialSegments[tup][j];
                Vector2 sv2 = (Vector2)arterialSegments[tup][j + 1];
-               //Debug.Log("RoadGraph add " + sv1 + " " + sv2);
-               //if (sv1 == testVec || sv2 == testVec) Debug.Log("RoadGraph add " + sv1 + " " + sv2);
                if (!roadGraph.ContainsKey(sv1)) roadGraph.Add(sv1, new HashSet<Vector2>());
                if (!roadGraph.ContainsKey(sv2)) roadGraph.Add(sv2, new HashSet<Vector2>());
                roadGraph[sv1].Add(sv2);
                roadGraph[sv2].Add(sv1);
             }
-            /*}
-            else if ((Vector2)arterialSegments[tup][0] == v2) {
-               for (int j = arterialSegments[tup].Count - 1; j > 0; j--) {
-                  Vector2 sv1 = (Vector2)arterialSegments[tup][j];
-                  Vector2 sv2 = (Vector2)arterialSegments[tup][j - 1];
-                  if (!roadGraph.ContainsKey(sv1)) roadGraph.Add(sv1, new HashSet<Vector2>());
-                  if (!roadGraph.ContainsKey(sv2)) roadGraph.Add(sv2, new HashSet<Vector2>());
-                  roadGraph[sv1].Add(sv2);
-                  roadGraph[sv2].Add(sv1);
-               }
-            }*/
          }
          else {
             if (!roadGraph.ContainsKey(v1)) roadGraph.Add(v1, new HashSet<Vector2>());
@@ -401,13 +379,6 @@ public class Area {
             roadGraph[v2].Add(v1);
          }
       }
-      /*if (roadGraph.ContainsKey(testVec)) {
-         string str = "";
-         foreach (Vector2 vec in roadGraph[testVec]) {
-            str += vec + ",";
-         }
-         Debug.Log("RoadGraph test2:" + roadGraph[testVec].Count + " " + str);
-      }*/
    }
 
    // v is current pos pre-extension, angle is extension direction, dir is positivity of direction +/-1
@@ -419,7 +390,6 @@ public class Area {
       bool established = false; // ie not pending
       bool hitSeed = false;
       List<(Vector2, Vector2)> nearbyList = GetVertListAt(nextV);
-      //if (debug) Debug.Log(v + " " + nextV);
 
       if (ContainsWall(nextV)) {
          return (nextV, history, false);
@@ -449,9 +419,6 @@ public class Area {
             Vector2 prevSrc = minV;
             Vector2 src = GetVertSrcOf(minV);
             while (src != Vector2.zero) {
-               /*if (localSegmentsPending.ContainsKey((src, prevSrc))) {
-                  localSegmentsPending[(src, prevSrc)] = true;
-               }*/
                int srcId = Val2Id(src);
                int prevSrcId = Val2Id(prevSrc);
                if (localSegmentsPending.ContainsKey((srcId, prevSrcId))) {
@@ -494,8 +461,6 @@ public class Area {
                pendingIntersections.Add(Val2Id(nextV));
             }
          }
-
-         //return (nextV, history, !hitSeed);
       }
 
       // Set past to established (CURRENT CHAIN)
@@ -513,13 +478,7 @@ public class Area {
       }
 
       if (bounds.InBounds(nextV) && !TerrainGen.IsWaterAt(nextV)) {
-         //Vector2 nearestIntersection = IntersectionNearby(nextV);
-         //bool intersectionNearby = nearestIntersection != Vector2.zero;
-         //Vector2 nearestIntersection = IntersectionNearby(nextV);
-         //bool intersectionNearby = nearestIntersection != Vector2.zero;
          bool intersectionNearby = IntersectionNearby(nextV);
-
-         //Debug.Log(v + " " + nextV + " " + nearestIntersection + " intersection?" + intersectionNearby + " continue?" + !(hitSeed || intersectionNearby));
          return (nextV, history, !(hitSeed || (intersectionNearby && snapped)));
       }
       return (nextV, history, false);
@@ -649,15 +608,13 @@ public class Area {
          intersectionList.Add(Id2Val(id));
       }
       blocks = BlockFinder.FindBlocks(roadGraph, intersectionList, primaryDir, secondaryDir);
-      Debug.Log("Blocks: " + blocks.Count);
-      if (blocks.Count > 0) Debug.Log("Block: " + blocks[0].ToString());
+      //Debug.Log("Blocks: " + blocks.Count);
 
       // gens plots and buildings
-      //blocks[0].GenBlock();
       foreach (Block b in blocks) {
          b.GenBlock();
       }
-      //TODO
+      
    }
 
 
@@ -707,9 +664,7 @@ public class Area {
 
    // CHUNK HASH UTIL
    public void AddVertToChunkHash(Vector2 src, Vector2 vert) {
-      Vector2Int chunk = W2AC(vert);//HashChunkGrouping(Util.W2C(vert));
-                                    //if (vert == new Vector2(-15.0f, -214.0f) || vert == new Vector2(-23.0f, -215.0f))
-                                    //Debug.Log("ADDING TO CHUNK HASH " + src + ">" + vert + " " + chunk);
+      Vector2Int chunk = W2AC(vert);
       if (!chunkHash.ContainsKey(chunk)) {
          chunkHash[chunk] = new List<(Vector2, Vector2)>();
       }
@@ -725,7 +680,7 @@ public class Area {
    }
 
    public List<(Vector2, Vector2)> GetVertListAt(Vector2 vert) {
-      Vector2Int chunk = W2AC(vert);//HashChunkGrouping(Util.W2C(vert));
+      Vector2Int chunk = W2AC(vert);
       return GetVertListAt(chunk);
    }
 
@@ -748,7 +703,7 @@ public class Area {
    }
 
    public bool ChunkHashContains(Vector2 vert) {
-      Vector2Int chunk = W2AC(vert);//HashChunkGrouping(Util.W2C(vert));
+      Vector2Int chunk = W2AC(vert);
       if (!chunkHash.ContainsKey(chunk)) {
          return false;
       }
@@ -758,7 +713,7 @@ public class Area {
       return false;
    }
    public Vector2 GetVertSrcOf(Vector2 vert) {
-      Vector2Int chunk = W2AC(vert);//HashChunkGrouping(Util.W2C(vert));
+      Vector2Int chunk = W2AC(vert);
       if (!chunkHash.ContainsKey(chunk)) {
          return Vector2.zero;
       }
@@ -771,7 +726,7 @@ public class Area {
    }
 
    public bool DoesChunkContainVert(Vector2 vert) {
-      Vector2Int chunk = W2AC(vert);// HashChunkGrouping(Util.W2C(vert));
+      Vector2Int chunk = W2AC(vert);
       return chunkHash.ContainsKey(chunk);
    }
 
