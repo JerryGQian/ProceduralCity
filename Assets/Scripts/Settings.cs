@@ -8,13 +8,29 @@ public class Settings {
    // Generation params ////////////////////////////
    /////////////////////////////////////////////////
    public static int chunkLoadingIncrement = 8;
+   public static int hwPathfindingIncrement = 5;
+
+   // Randomness also decreases griddiness
+   public static float arterialGridding = 1f; // point shifting from highways proximity
+   public static float arterialRandomness = 1f; // added randomness to points
+
+   public static float localGridding = 1f;
+   public static float localRandomness = 1f;
+
 
    /////////////////////////////////////////////////
    // Render settings //////////////////////////////
    /////////////////////////////////////////////////
+   
+   // Marking sizes
+   public static float highwayWidth = 4f;
+   public static float arterialRoadWidth = 3f;
+   public static float localRoadWidth = 2f;
 
+   //____________________________________________________________________________
    // End Product Visualization, only final results (overrides manual markings)
-   public static bool production = true;
+   public static bool production = true; // set false to use any of the individual values below!
+   //____________________________________________________________________________
 
    // Region Markers
    public static bool renderRegionMarkers = false && !production;

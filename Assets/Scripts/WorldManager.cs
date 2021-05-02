@@ -4,19 +4,19 @@ using UnityEngine;
 
 public class WorldManager : MonoBehaviour {
 
-   public static int dim = 500; // deprecated
-   public static int dimArea = dim * dim;
+   //public static int dim = 500; // deprecated
+   //public static int dimArea = dim * dim;
 
-   public static int loadRadius = 5; // radius of chunk patch (not counting center)
+   public static int loadRadius = 8; // radius of chunk patch (not counting center)
    public static int chunkSize = 10; // units in length per chunk
-   public static int regionDim = 32; // chunks in length per region, must be odd 24
+   public static int regionDim = 32; // chunks in length per region, must be odd? 24
 
    public WorldBuilder wb;
    public GameObject chunkMeshesParent;
-   public static float[,] landValueMap = new float[dim, dim];
+   /*public static float[,] landValueMap = new float[dim, dim];
    public static float[,] terrainHeightMap = new float[dim, dim];
    public static float[,] waterDistanceMap = new float[dim, dim];
-   public static float[] waterDistanceArr = new float[dimArea];
+   public static float[] waterDistanceArr = new float[dimArea];*/
    public static Dictionary<(Vector2, Vector2), bool> edgeState = new Dictionary<(Vector2, Vector2), bool>();
 
    public static float waterDistanceLimit = 10;
@@ -40,6 +40,8 @@ public class WorldManager : MonoBehaviour {
 
    public GameObject player;
 
+   public static bool GenHighwayState = false;
+
    // Start is called before the first frame update
    void Start() {
       InvokeRepeating("LoadLocal", 0, 0.75f);
@@ -55,23 +57,24 @@ public class WorldManager : MonoBehaviour {
    }
 
    public void DestroyDistant() {
-      Vector2Int pos = W2C(player.transform.position);
-      ArrayList meshesToRemove = new ArrayList();
-      foreach (KeyValuePair<Vector2Int, GameObject> kv in chunkMeshes) {
-         Vector2Int idx = kv.Key;
-         if (Vector2Int.Distance(pos, idx) > loadRadius * 4) {
-            GameObject go = kv.Value;
-            Destroy(go);
-            meshesToRemove.Add(idx);
+      if (!GenHighwayState) {
+         Vector2Int pos = W2C(player.transform.position);
+         ArrayList meshesToRemove = new ArrayList();
+         foreach (KeyValuePair<Vector2Int, GameObject> kv in chunkMeshes) {
+            Vector2Int idx = kv.Key;
+            if (Vector2Int.Distance(pos, idx) > loadRadius * 4) {
+               GameObject go = kv.Value;
+               Destroy(go);
+               meshesToRemove.Add(idx);
 
+            }
          }
-      }
-      foreach (Vector2Int idx in meshesToRemove) {
-         chunkMeshes.Remove(idx);
-      }
+         foreach (Vector2Int idx in meshesToRemove) {
+            chunkMeshes.Remove(idx);
+         }
 
-      wb.DestroyDistantArterial(GetLocalBounds());
-
+         wb.DestroyDistantArterial(GetLocalBounds());
+      }
    }
 
    void LoadLocal() {
@@ -82,9 +85,8 @@ public class WorldManager : MonoBehaviour {
       Vector3 pos3 = player.transform.position;
       Vector2Int idx = W2C(pos3);
 
-      // Snapshot Region and build highways
-      //yield return StartCoroutine(GenRegionPatch(idx));
-      GenRegionPatch(idx);
+      // Build highways - waits for completion before moving on
+      yield return StartCoroutine(GenRegionPatch(idx));
 
       // Build list of chunk patch indices
       ArrayList idxToRender = new ArrayList();
@@ -107,7 +109,6 @@ public class WorldManager : MonoBehaviour {
          }
       }
 
-
       // Find Areas, Gen Arterial Paths, Gen Local Roads
       GenChunkPatchAreas(idxToRender);
       // Gen Arterial Paths in patch
@@ -125,9 +126,7 @@ public class WorldManager : MonoBehaviour {
    }
 
    // Adds road to road graph
-   public static void AddToRoadGraph(Vector2 v1, Vector2 v2) {
-      //Debug.Log("AddToRoadGraph " + v1 + " " + v2);
-      
+   public static void AddToRoadGraph(Vector2 v1, Vector2 v2) {      
       if (!roadGraph.ContainsKey(v1)) {
          roadGraph[v1] = new HashSet<Vector2>();
       }
@@ -160,7 +159,8 @@ public class WorldManager : MonoBehaviour {
 
    // Snapshots /////////////////////////////////////////////////////////////////////
    //    peeks into each chunk and calculates center coordinate instead of entire chunk
-   public void GenRegionPatch(Vector2Int chunkIdx) {
+   //public void
+   IEnumerator GenRegionPatch(Vector2Int chunkIdx) {
       Vector2 world = C2W(chunkIdx);
       Vector2Int regionIdx = W2R(new Vector2Int((int)world.x, (int)world.y));
       ArrayList patchDensityCenters = new ArrayList();
@@ -204,21 +204,23 @@ public class WorldManager : MonoBehaviour {
       if (!regions[regionIdx].highwayPatchExecuted) {
          regions[regionIdx].highwayPatchExecuted = true;
          // Gen highway and wait till done
-         GenBuildHighway(patchDensityCenters, regionIdx);
-
+         yield return StartCoroutine(GenBuildHighway(patchDensityCenters, regionIdx));
          // Prep arterial
          if (!regions[regionIdx].arterialLayoutGenerated) {
             regions[regionIdx].arterialLayoutGenerated = true;
             StartCoroutine(GenBuildArterial(patchDensitySnapshotsMap, regionIdx));
          }
       }
+      else {
+      }
    }
 
-   private void GenBuildHighway(ArrayList patchDensityCenters, Vector2Int regionIdx) {
+   //private void
+   IEnumerator GenBuildHighway(ArrayList patchDensityCenters, Vector2Int regionIdx) {
       Region region = regions[regionIdx];
-      Debug.Log("GenBuildHighway " + regionIdx);
       region.hwg = new HighwayGenerator(patchDensityCenters, regionIdx);
-      region.hwg.GenHighwayCoroutine();
+      //region.hwg.GenHighwayCoroutine();
+      yield return StartCoroutine(region.hwg.GenHighwayCoroutine());
       wb.BuildRegionMarkers(regionIdx);
       wb.BuildHighway(region.hwg, regionIdx);
    }
@@ -227,9 +229,7 @@ public class WorldManager : MonoBehaviour {
    IEnumerator GenBuildArterial(Dictionary<Vector2Int, float> patchDensitySnapshotsMap, Vector2Int regionIdx) {
       Region region = regions[regionIdx];
       region.atg = new ArterialGenerator(patchDensitySnapshotsMap, region.bounds, regionIdx);
-      //IEnumerator genArterialCoroutine = region.atg.GenArterialLayout();
       region.atg.GenArterialLayout();
-      //yield return StartCoroutine(genHighwayCoroutine);
       if (Settings.renderArterialLayout) wb.BuildArterialLayout(region.atg, regionIdx);
       yield return null;
    }
@@ -242,7 +242,6 @@ public class WorldManager : MonoBehaviour {
          boundsList.Add(chunks[v].bounds);
       }
       Bounds patchBound = Bounds.Merge(boundsList);
-      //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);
       Vector2Int regionIdx = Util.W2R(patchBound.GetCenter());
       HashSet<Vector2> sourceVerts = new HashSet<Vector2>();
       List<(Vector2, Vector2)> edges = new List<(Vector2, Vector2)>(); // edges to build
@@ -251,20 +250,19 @@ public class WorldManager : MonoBehaviour {
       Vector2Int thisRegionIdx = regionIdx;
       if (regions.ContainsKey(thisRegionIdx)) {
          ArterialGenerator atg = regions[thisRegionIdx].atg;
-         //Debug.Log(thisRegionIdx + " " + regions[thisRegionIdx].atg);
-         foreach ((Vector2, Vector2) e in atg.arterialEdges) {
-            if (!edgesBidirectionalSet.Contains(e) && (patchBound.InBounds(e.Item1) || patchBound.InBounds(e.Item2))) {
-               if (patchBound.InBounds(e.Item1)) {
-                  sourceVerts.Add(e.Item1);
+         if (atg != null) {
+            foreach ((Vector2, Vector2) e in atg.arterialEdges) {
+               if (!edgesBidirectionalSet.Contains(e) && (patchBound.InBounds(e.Item1) || patchBound.InBounds(e.Item2))) {
+                  if (patchBound.InBounds(e.Item1)) {
+                     sourceVerts.Add(e.Item1);
+                  }
+                  if (patchBound.InBounds(e.Item2)) {
+                     sourceVerts.Add(e.Item2);
+                  }
+                  // register with bidirectional set
+                  edgesBidirectionalSet.Add(e);
+                  edgesBidirectionalSet.Add((e.Item2, e.Item1));
                }
-               if (patchBound.InBounds(e.Item2)) {
-                  sourceVerts.Add(e.Item2);
-               }
-               //edges.Add(e);
-
-               // register with bidirectional set
-               edgesBidirectionalSet.Add(e);
-               edgesBidirectionalSet.Add((e.Item2, e.Item1));
             }
          }
       }
@@ -279,7 +277,9 @@ public class WorldManager : MonoBehaviour {
       foreach (Area a in currAreas) {
          currAreasSet.Add(a.ToString());
       }
-      wb.DestroyDistantAreas(currAreas);
+      if (!GenHighwayState) {
+         wb.DestroyDistantAreas(currAreas);
+      }
       foreach (Area a in currAreas) {
          string areaName = a.ToString();
          currAreasSet.Add(areaName);
@@ -308,7 +308,6 @@ public class WorldManager : MonoBehaviour {
          boundsList.Add(chunks[v].bounds);
       }
       Bounds patchBound = Bounds.Merge(boundsList);
-      //Debug.Log("patchBound: " + patchBound.dim + " " + patchBound.xMin + " " + patchBound.zMin);
       Vector2Int regionIdx = Util.W2R(patchBound.GetCenter());
       List<(Vector2, Vector2)> edges = new List<(Vector2, Vector2)>(); // edges to build
       HashSet<(Vector2, Vector2)> edgesBidirectionalSet = new HashSet<(Vector2, Vector2)>();
@@ -317,13 +316,14 @@ public class WorldManager : MonoBehaviour {
       Vector2Int thisRegionIdx = regionIdx;
       if (regions.ContainsKey(thisRegionIdx)) {
          ArterialGenerator atg = regions[thisRegionIdx].atg;
-         //Debug.Log(thisRegionIdx + " " + regions[thisRegionIdx].atg);
-         foreach ((Vector2, Vector2) e in atg.arterialEdges) {
-            if (!edgesBidirectionalSet.Contains(e) && (patchBound.InBounds(e.Item1) || patchBound.InBounds(e.Item2))) {
-               edges.Add(e);
-               // register with directional set
-               edgesBidirectionalSet.Add(e);
-               edgesBidirectionalSet.Add((e.Item2, e.Item1));
+         if (atg != null) {
+            foreach ((Vector2, Vector2) e in atg.arterialEdges) {
+               if (!edgesBidirectionalSet.Contains(e) && (patchBound.InBounds(e.Item1) || patchBound.InBounds(e.Item2))) {
+                  edges.Add(e);
+                  // register with directional set
+                  edgesBidirectionalSet.Add(e);
+                  edgesBidirectionalSet.Add((e.Item2, e.Item1));
+               }
             }
          }
       }
@@ -380,12 +380,10 @@ public class WorldManager : MonoBehaviour {
 
    // Loading /////////////////////////////////////////////////////////////////////
    public void LoadChunk(Vector2Int idx) {
-      //Debug.Log("Loading Chunk:" + idx);
       if (chunks.ContainsKey(idx)) {
          Chunk chunk = chunks[idx];
          if (chunk.state == ChunkState.PRELOADED) {
             chunk.Load(GetPatchChunks(idx));
-            //chunk.Load(GetLargePatchChunks(idx));
          }
       }
       else {
@@ -394,7 +392,6 @@ public class WorldManager : MonoBehaviour {
    }
 
    public void RenderChunk(Vector2Int idx) {
-      //Debug.Log("Rendering: " + idx + " " + chunkMeshes.ContainsKey(idx));
       if (!chunkMeshes.ContainsKey(idx)) {
          GameObject chunkMesh = Instantiate(ChunkMeshPrefab, new Vector3(0, 0, 0), Quaternion.identity);
          chunkMesh.transform.parent = chunkMeshesParent.transform;

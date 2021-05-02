@@ -36,7 +36,9 @@ public class HighwayGenerator {
       this.regionIdx = regionIdx;
    }
 
-   public void GenHighwayCoroutine() {
+   //public void GenHighway() {
+   public IEnumerator GenHighwayCoroutine() {
+      WorldManager.GenHighwayState = true;
       Dictionary<Vector2, float> densityLookup = new Dictionary<Vector2, float>();
 
       // cluster nearby points with DBScan
@@ -111,7 +113,9 @@ public class HighwayGenerator {
 
       // Generate final highway segments for each edge
       // Uses A* search to pathfind
+      int hwCount = 0;
       foreach (Edge e in edges) {
+         hwCount++;
          (Vector2Int, Vector2Int) eVec = (Util.VertexToVector2Int((Vertex)vertices[e.P0]), Util.VertexToVector2Int((Vertex)vertices[e.P1]));
          Vertex v0 = (Vertex)vertices[e.P0];
          Vertex v1 = (Vertex)vertices[e.P1];
@@ -223,7 +227,11 @@ public class HighwayGenerator {
          }
 
          if (segments != null) highways.Add(segments);
+
+         if (hwCount % Settings.hwPathfindingIncrement == 0)
+            yield return null;
       }
+      WorldManager.GenHighwayState = false;
    }
 
    private void RemoveEdge(Edge e) {

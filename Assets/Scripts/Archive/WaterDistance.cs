@@ -19,7 +19,7 @@ public class WaterDistance : MonoBehaviour {
    //public ArrayList<ArrayList<WaterBucket>> waterBuckets = new float[dim, dim];
 
    // Start is called before the first frame update
-   void Start() {
+   /*void Start() {
       CalcShoreDistances();
    }
 
@@ -57,39 +57,6 @@ public class WaterDistance : MonoBehaviour {
       if (WorldManager.terrainHeightMap[center.x, center.y] <= 0f) {
          return 0f;
       }
-
-      /*HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
-      Queue<Vector2Int> toVisit = new Queue<Vector2Int>();
-
-      toVisit.Enqueue(center);
-
-      void AddIfUnvisited(Vector2Int node) {
-         if (!visited.Contains(node)) {
-            toVisit.Enqueue(node);
-         }
-      }
-      int printed = 0;
-
-      while (toVisit.Count > 0 && printed < 500) {
-         Vector2Int curr = toVisit.Dequeue();
-         visited.Add(curr);
-         if (Vector2.Distance(center, curr) > WorldManager.waterDistanceLimit) {
-            continue;
-         }
-
-         //if (!printed) Debug.Log(curr);
-         if (WorldManager.terrainHeightMap[curr.x, curr.y] <= 0f) {
-            return Vector2.Distance(center, curr);
-         }
-         printed++;
-
-         if (curr.x > 0) AddIfUnvisited(curr + Vector2Int.left);
-         if (curr.x < WorldManager.dim - 1) AddIfUnvisited(curr + Vector2Int.right);
-         if (curr.y < WorldManager.dim - 1) AddIfUnvisited(curr + Vector2Int.up);
-         if (curr.y > 0) AddIfUnvisited(curr + Vector2Int.down);
-      }
-      if (center == new Vector2Int(50, 50)) Debug.Log(toVisit.Count);
-      */
 
       float currStraightDist = 0;
       float currDiagDist = 0;
@@ -173,5 +140,5 @@ public class WaterDistance : MonoBehaviour {
       }
 
       return minDist;
-   }
+   }*/
 }

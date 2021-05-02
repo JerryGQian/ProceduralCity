@@ -176,7 +176,7 @@ public class ArterialGenerator {
             else {
                r = new CoordRandom(regionIdx);
             }
-            point += Hp.arterialRandomness * r.NextVector2(-10, 10);
+            point += Settings.arterialRandomness * r.NextVector2(-10, 10);
 
             if (ShouldGenPoint((int)point.x, (int)point.y, thisBounds)) {
                arterialPointsByRegion[idx].Add(point);
@@ -482,7 +482,6 @@ public class ArterialGenerator {
             }
          }
          if (minDiff < 181) { // only if found
-            (Vector2, Vector2) tup = (cs.v, minVec);
             queue.Enqueue(minVec);
             visited.Add(minVec);
 
@@ -839,7 +838,7 @@ public class ArterialGenerator {
             break;
       }
 
-      return Hp.arterialGridding * adjustment;
+      return Settings.arterialGridding * adjustment;
    }
 
    private void RemoveEdge((Vector2, Vector2) e) {

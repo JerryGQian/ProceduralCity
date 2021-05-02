@@ -99,16 +99,12 @@ public class Chunk {
 
       Queue<Vector2Int> queue = new Queue<Vector2Int>();
       HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
-      int i = 0;
       // Enqueue initial shore points
       foreach (Chunk c in patchChunks) {
          foreach (Vector2Int waterPoint in c.waterList) {
             Vector2Int patchLocalPoint = GetLocalPatchCoord(waterPoint);
             queue.Enqueue(waterPoint);
             visited.Add(waterPoint);
-            /*if (i % 20 == 0) {
-               Debug.Log(patchLocalPoint.x + " " + patchLocalPoint.y);
-            }*/
             patchWaterDistanceMap[patchLocalPoint.x, patchLocalPoint.y] = 0;
          }
       }
@@ -150,7 +146,7 @@ public class Chunk {
    public void CalcDensity() {
       float sum = 0;
       int count = 0;
-      for (int i = 0, x = (int)bounds.xMin; x < bounds.xMax + 1; x++) {
+      for (int x = (int)bounds.xMin; x < bounds.xMax + 1; x++) {
          for (int z = (int)bounds.zMin; z < bounds.zMax + 1; z++) {
             Vector2Int globalPoint = new Vector2Int(x, z);
             Vector2Int localPoint = GetLocalCoord(globalPoint);

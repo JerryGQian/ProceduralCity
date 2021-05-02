@@ -80,7 +80,7 @@ public class Block {
       }
    }
 
-   public string ToString() {
+   public override string ToString() {
       string s = "";
       foreach (Vector2 v in verts) {
          s += v.ToString();

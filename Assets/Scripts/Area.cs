@@ -93,7 +93,7 @@ public class Area {
       }
    }
 
-   public string ToString() {
+   public override string ToString() {
       string s = "";
       foreach (Vector2 v in verts) {
          s += v.ToString();
@@ -604,19 +604,20 @@ public class Area {
    }
 
    private void GenBlocks() {
-      // search for blocks
-      List<Vector2> intersectionList = new List<Vector2>();
-      foreach (int id in intersections) {
-         intersectionList.Add(Id2Val(id));
-      }
-      blocks = BlockFinder.FindBlocks(roadGraph, intersectionList, primaryDir, secondaryDir);
-      //Debug.Log("Blocks: " + blocks.Count);
+      if (Settings.renderBuildings) {
+         // search for blocks
+         List<Vector2> intersectionList = new List<Vector2>();
+         foreach (int id in intersections) {
+            intersectionList.Add(Id2Val(id));
+         }
+         blocks = BlockFinder.FindBlocks(roadGraph, intersectionList, primaryDir, secondaryDir);
+         //Debug.Log("Blocks: " + blocks.Count);
 
-      // gens plots and buildings
-      foreach (Block b in blocks) {
-         b.GenBlock();
+         // gens plots and buildings
+         foreach (Block b in blocks) {
+            b.GenBlock();
+         }
       }
-      
    }
 
 
@@ -755,7 +756,6 @@ public class Area {
 
    // world to area chunk (smaller than regular chunk)
    public static Vector2Int W2AC(Vector2 worldCoord) {
-      int chunkSize = 5;
       if (worldCoord.x < 0) {
          worldCoord.x -= chunkWidth;
       }

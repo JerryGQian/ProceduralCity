@@ -70,7 +70,7 @@
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\LR.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\SiteList.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Log.cs" />
-    <Compile Include="Assets\Scripts\Quadtree.cs" />
+    <Compile Include="Assets\Scripts\Archive\Quadtree.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\SimpleSmoother.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Configuration.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\EdgeList.cs" />
@@ -78,7 +78,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Face.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\ITriangle.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\BoundedVoronoi.cs" />
-    <Compile Include="Assets\Scripts\WaterDistance.cs" />
+    <Compile Include="Assets\Scripts\Archive\WaterDistance.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Rectf.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\IConstraintMesher.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Iterators\EdgeIterator.cs" />
@@ -86,18 +86,15 @@
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\EdgeReorderer.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\DefaultVoronoiFactory.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\DebugWriter.cs" />
-    <Compile Include="Assets\Scripts\Player\PlayerController.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Vector2f.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Enums.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\IPolygon.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\HalfEdge.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\IEdge.cs" />
     <Compile Include="Assets\Scripts\BlockFinder.cs" />
-    <Compile Include="Assets\Scripts\Player\CameraController.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\QualityOptions.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleSampler.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Vertex.cs" />
-    <Compile Include="Assets\Scripts\Test\DensityTest.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Point.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\ConstraintOptions.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Smoothing\ISmoother.cs" />
@@ -110,7 +107,6 @@
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanResult.cs" />
     <Compile Include="Assets\Scripts\Chunk.cs" />
     <Compile Include="Assets\Scripts\Block.cs" />
-    <Compile Include="Assets\Scripts\Hp.cs" />
     <Compile Include="Assets\Scripts\AreaFinder.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Geom\Winding.cs" />
     <Compile Include="Assets\Scripts\Util.cs" />
@@ -122,8 +118,6 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\RegionPointer.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\TriangleFormat.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\CuthillMcKee.cs" />
-    <Compile Include="Assets\Scripts\MeshGenerator.cs" />
-    <Compile Include="Assets\Scripts\SpatialUtil.cs" />
     <Compile Include="Assets\Scripts\CoordRandom.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Edge.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Voronoi\Legacy\BoundedVoronoiLegacy.cs" />
@@ -148,7 +142,6 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Algorithm\Dwyer.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\DbscanPoint.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Meshing\Iterators\VertexCirculator.cs" />
-    <Compile Include="Assets\Scripts\Test\WaterDistanceTest.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\Interpolation.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\ExtensionMethods.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Halfedge.cs" />
@@ -177,6 +170,7 @@
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\Voronoi.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\IO\IPolygonFormat.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Geometry\Segment.cs" />
+    <Compile Include="Assets\Scripts\Lot.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\NewLocation.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Logging\ILogItem.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Mesh.cs" />
@@ -187,7 +181,7 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Tools\AdjacencyMatrix.cs" />
     <Compile Include="Assets\Libraries\csDelaunay-master\Delaunay\HalfedgePriorityQueue.cs" />
     <Compile Include="Assets\Libraries\dbscan\DbscanImplementation\PointType.cs" />
-    <Compile Include="Assets\Scripts\Player\FlyCamera.cs" />
+    <Compile Include="Assets\Scripts\FlyCamera.cs" />
     <Compile Include="Assets\Scripts\Settings.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\SubSegment.cs" />
     <Compile Include="Assets\Libraries\AStarPathfinding\Grid.cs" />
@@ -205,7 +199,6 @@
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\Topology\DCEL\Vertex.cs" />
     <Compile Include="Assets\Libraries\Triangle-NET-Unity-Port\TriangleLocator.cs" />
     <Compile Include="Assets\Scripts\ChunkMeshRenderer.cs" />
-    <Compile Include="Assets\Scripts\Lot.cs" />
   </ItemGroup>
   <ItemGroup>
      <None Include="Assets\Shaders\ColoredVertex.shader" />
