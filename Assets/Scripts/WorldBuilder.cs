@@ -18,6 +18,7 @@ public class WorldBuilder : MonoBehaviour {
 
    public static Dictionary<(Vector2, Vector2), bool> builtHighways = new Dictionary<(Vector2, Vector2), bool>();
    public static HashSet<(Vector2, Vector2)> builtArterial = new HashSet<(Vector2, Vector2)>();
+   public static Dictionary<(Vector2, Vector2), ArrayList> builtArterialSegments = new Dictionary<(Vector2, Vector2), ArrayList>();
    public static Dictionary<string, GameObject> builtAreas = new Dictionary<string, GameObject>();
    //public static Dictionary<Vector2Int, GameObject> chunkMeshes = new Dictionary<Vector2Int, GameObject>();
    public static Dictionary<string, GameObject> roadMeshes = new Dictionary<string, GameObject>();
@@ -26,10 +27,6 @@ public class WorldBuilder : MonoBehaviour {
    // Spatial hashing of highway vertices for intersection management, <chunkIdx, List<vertex,(parent vertices)>>
    public static Dictionary<Vector2Int, List<(Vector2, (Vector2Int, Vector2Int))>> highwayVertChunkHash = new Dictionary<Vector2Int, List<(Vector2, (Vector2Int, Vector2Int))>>();
    private static int hashChunkWidth = 3;
-
-   void Start() {
-
-   }
 
    public void BuildRegionMarkers(Vector2Int regionIdx) {
       if (Settings.renderRegionMarkers) {
@@ -139,9 +136,17 @@ public class WorldBuilder : MonoBehaviour {
       }
    }
 
-   public void BuildArterial((Vector2, Vector2) edge, ArrayList segments) {
+   public void BuildArterial((Vector2, Vector2) edge, ArrayList segments, Bounds b) {
       if (Settings.renderArterialPaths) {
-         if (segments.Count > 0 && !builtArterial.Contains(edge)) {
+         (Vector2, Vector2) edgeRev = (edge.Item2, edge.Item1);
+         if (segments.Count > 0 
+            && (b.InBounds(edge.Item1) || b.InBounds(edge.Item2)) 
+            && (!builtArterial.Contains(edge) || !builtArterial.Contains(edgeRev))) {
+
+            if (!builtArterialSegments.ContainsKey(edge))
+               builtArterialSegments.Add(edge, new ArrayList());
+            if (!builtArterialSegments.ContainsKey(edgeRev))
+               builtArterialSegments.Add(edgeRev, new ArrayList());
             for (int i = 0; i < segments.Count - 1; i++) {
                Vector2 P0 = (Vector2)segments[i];
                Vector2 P1 = (Vector2)segments[i + 1];
@@ -177,7 +182,34 @@ public class WorldBuilder : MonoBehaviour {
                segment.name = "ArterialSeg " + edge.Item1 + " " + edge.Item2;
                Transform trans = segment.GetComponent<Transform>();
                trans.localScale = new Vector3(dist, 1, 2);
+
+               builtArterialSegments[edge].Add(segment);
+               builtArterialSegments[edgeRev].Add(segment);
             }
+            builtArterial.Add(edge);
+            builtArterial.Add(edgeRev);
+         }
+      }
+   }
+
+   public void DestroyDistantArterial(Bounds b) {
+      ArrayList edgeToRemove = new ArrayList();
+      
+      foreach ((Vector2, Vector2) edge in builtArterial) {
+         (Vector2, Vector2) edgeRev = (edge.Item2, edge.Item1);
+         if (!b.InBounds(edge.Item1) && !b.InBounds(edge.Item2)) {
+            edgeToRemove.Add(edge);
+            edgeToRemove.Add(edgeRev);
+         }
+      }
+
+      foreach ((Vector2, Vector2) edge in edgeToRemove) {
+         if (builtArterial.Contains(edge)) builtArterial.Remove(edge);
+         if (builtArterialSegments.ContainsKey(edge)) {
+            foreach (GameObject seg in builtArterialSegments[edge]) {
+               Destroy(seg);
+            }
+            builtArterialSegments.Remove(edge);
          }
       }
    }
@@ -337,10 +369,10 @@ public class WorldBuilder : MonoBehaviour {
             if (!curRegion.arterialLayoutBuilt) {
                curRegion.arterialLayoutBuilt = true;
                foreach (Vector2 point in atg.arterialPointsByRegion[regionPair.Key]) {
-                  GameObject obj = Instantiate(purpleCube, new Vector3(point.x, 18, point.y), Quaternion.identity);
+                  GameObject obj = Instantiate(purpleCube, new Vector3(point.x, 8, point.y), Quaternion.identity);
                   obj.name = "ArterialPoint " + point;
                   Transform trans = obj.GetComponent<Transform>();
-                  trans.localScale = new Vector3(5, 4, 5);
+                  trans.localScale = new Vector3(5, 5, 5);
                }
             }
          }
@@ -365,7 +397,7 @@ public class WorldBuilder : MonoBehaviour {
 
                float angle = Mathf.Atan2(P1.x - P0.x, P1.y - P0.y) * Mathf.Rad2Deg + 90;
 
-               GameObject segment = Instantiate(yellowCube, new Vector3(x, 20, y), Quaternion.AngleAxis(angle, Vector3.up));
+               GameObject segment = Instantiate(yellowCube, new Vector3(x, 8, y), Quaternion.AngleAxis(angle, Vector3.up));
                segment.name = "ArterialEdge " + P0 + " " + P1;
                Transform trans = segment.GetComponent<Transform>();
                //trans.position = new Vector3(x, 0, y);

@@ -46,6 +46,14 @@ public class WorldManager : MonoBehaviour {
       InvokeRepeating("DestroyDistant", 0.75f, 0.75f);
    }
 
+   public Bounds GetLocalBounds() {
+      float halfPatchWidth = (loadRadius + 0.5f) * chunkSize;
+      return new Bounds(
+         (2 * loadRadius + 1) * chunkSize,
+         player.transform.position.x - halfPatchWidth,
+         player.transform.position.z - halfPatchWidth);
+   }
+
    public void DestroyDistant() {
       Vector2Int pos = W2C(player.transform.position);
       ArrayList meshesToRemove = new ArrayList();
@@ -62,7 +70,8 @@ public class WorldManager : MonoBehaviour {
          chunkMeshes.Remove(idx);
       }
 
-      
+      wb.DestroyDistantArterial(GetLocalBounds());
+
    }
 
    void LoadLocal() {
@@ -281,15 +290,13 @@ public class WorldManager : MonoBehaviour {
          Area actualArea = areas[areaName];
          if (!WorldBuilder.builtAreas.ContainsKey(areaName)) { 
             foreach (KeyValuePair<(Vector2, Vector2), ArrayList> e in actualArea.arterialSegments) {
-               wb.BuildArterial(e.Key, e.Value);
+               wb.BuildArterial(e.Key, e.Value, GetLocalBounds());
             }
             wb.BuildAreaDebug(actualArea);
             wb.BuildAreaLocal(actualArea);
             wb.BuildAreaBlocks(actualArea);
          }
       }
-      
-      
    }
 
 
@@ -320,15 +327,6 @@ public class WorldManager : MonoBehaviour {
             }
          }
       }
-
-      // Path find each edge
-      ArterialPathfinding pathfinding = new ArterialPathfinding();
-      /*foreach ((Vector2, Vector2) e in edges) {
-         // A* pathfind from v0 to v1
-         ArrayList segments = pathfinding.FindPath(e.Item1, e.Item2);
-         //Debug.Log("pathfinding " + e + " " + segments.Count);
-         //wb.BuildArterial(e, segments);
-      }*/
    }
 
    public (float[,], Dictionary<Vector2Int, float>) SnapshotRegion(Vector2Int regionIdx) {

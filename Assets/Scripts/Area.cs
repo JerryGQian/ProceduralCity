@@ -485,6 +485,8 @@ public class Area {
    }
 
    private void OptimizeIntersections() {
+      if (!Settings.optimizeLocalRoads) return;
+
       for (int i = 0; i < optimizationSteps; i++) {
          foreach (int centerId in intersections) {
             Vector2 center = id2val[centerId];

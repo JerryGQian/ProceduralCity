@@ -14,7 +14,7 @@ public class Settings {
    /////////////////////////////////////////////////
 
    // End Product Visualization, only final results (overrides manual markings)
-   public static bool production = false;
+   public static bool production = true;
 
    // Region Markers
    public static bool renderRegionMarkers = false && !production;
@@ -25,16 +25,17 @@ public class Settings {
    public static bool renderHighwayPaths = true || production;
 
    // Arterial Network
-   public static bool renderArterialLayout = true && !production;
-   public static bool renderArterialPoints = true && !production;
+   public static bool renderArterialLayout = false && !production;
+   public static bool renderArterialPoints = false && !production;
    public static bool renderArterialEdges = false && !production;
-   public static bool renderArterialPaths = false || production;
+   public static bool renderArterialPaths = true || production;
 
    // Areas/Local Network
-   public static bool renderAreaDebug = false && !production;
-   public static bool renderAreaSeeds = false && !production;
-   public static bool renderAreaIntersections = false && !production;
-   public static bool renderAreaLocal = false || production;
+   public static bool renderAreaDebug = true && !production;
+   public static bool renderAreaSeeds = true && !production;
+   public static bool renderAreaIntersections = true && !production;
+   public static bool renderAreaLocal = true || production;
+   public static bool optimizeLocalRoads = true || production;
 
    // Blocks
    public static bool renderLotEdges = false && !production;
