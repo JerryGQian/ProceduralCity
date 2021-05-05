@@ -7,7 +7,7 @@ public class Settings {
    /////////////////////////////////////////////////
    // Generation params ////////////////////////////
    /////////////////////////////////////////////////
-   public static int chunkLoadingIncrement = 8;
+   public static int chunkLoadingIncrement = 20;
    public static int hwPathfindingIncrement = 5;
 
    // Randomness also decreases griddiness
